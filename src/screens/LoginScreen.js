@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import CustomTextInput from '../components/CustomTextInput';
 import CustomButton from '../components/CustomButton';
-import { grayColor, whiteColor, redColor } from '../constans/Color';
+import { grayColor, whiteColor, redColor, lightColor, lightBlack } from '../constans/Color';
 import { BaseStyle } from '../constans/Style';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
 import { style, spacings } from '../constans/Fonts';
@@ -84,7 +84,7 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView
-      style={[flex, { backgroundColor: '#2F2F2F' }]}
+      style={[flex, { backgroundColor: lightColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
       <ScrollView
@@ -157,10 +157,10 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
-    backgroundColor: '#3F3F3F',
+    backgroundColor: lightBlack,
     borderRadius: 10,
     padding: spacings.xxxLarge,
-    marginVertical: spacings.xxxLarge,
+    marginVertical: spacings.xxLarge,
   },
   footer: {
     flexDirection: 'row',

@@ -22,7 +22,7 @@ const CustomButton = ({ title, onPress, disabled = false, loading = false }) => 
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#7b7676ff', 
+    backgroundColor: '#9f9f9f', 
     paddingVertical: spacings.xLarge,
     borderRadius: 5,
     alignItems: 'center',
