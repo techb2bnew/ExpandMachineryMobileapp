@@ -14,15 +14,20 @@ const CustomTextInput = ({
   value,
   onChangeText,
   error,
+  required,
   ...props
 }) => {
   return (
     <View style={styles.container}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-
+      {label ? (
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.required}> *</Text> : null}
+        </Text>
+      ) : null}
       <View style={[
         styles.inputContainer,
-        { borderColor: error ? redColor : grayColor }
+        { borderColor: error ? whiteColor : grayColor }
       ]}>
         {/* Left Icon */}
         {icon ? (
@@ -85,9 +90,12 @@ const styles = StyleSheet.create({
     color: whiteColor,
   },
   errorText: {
-    color: redColor,
-    fontSize: style.fontSizeSmall.fontSize,
+    color: whiteColor,
+    fontSize: style.fontSizeSmall2x.fontSize,
     marginTop: spacings.small,
+  },
+   required: {
+    color: redColor, // * ko red karne ke liye
   },
 });
 

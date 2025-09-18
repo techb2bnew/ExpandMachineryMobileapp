@@ -11,6 +11,7 @@ import {
 } from '../constans/Constants';
 import { APP_LOGO } from '../assests/images';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/Ionicons';
 const { flex, alignJustifyCenter } = BaseStyle;
 
 const LoginScreen = ({ navigation }) => {
@@ -18,6 +19,7 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(false); // ✅ New state
 
   // Error states
   const [emailError, setEmailError] = useState('');
@@ -42,8 +44,8 @@ const LoginScreen = ({ navigation }) => {
     if (!password.trim()) {
       setPasswordError('Password is required');
       valid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    } else if (password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
       valid = false;
     } else {
       setPasswordError('');
@@ -107,7 +109,10 @@ const LoginScreen = ({ navigation }) => {
             placeholder={ENTER_YOUR_EMAIL}
             icon="mail-outline"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              setEmailError('');
+            }}
             error={emailError}
           />
 
@@ -119,10 +124,24 @@ const LoginScreen = ({ navigation }) => {
             rightIcon={showPassword ? 'eye-outline' : 'eye-off-outline'}
             secureTextEntry={!showPassword}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              setPasswordError('');
+            }}
             onRightIconPress={() => setShowPassword(!showPassword)}
             error={passwordError}
           />
+          <TouchableOpacity
+            style={[styles.checkboxContainer]}
+            activeOpacity={0.8}
+            onPress={() => setKeepLoggedIn(!keepLoggedIn)}>
+            <Icon
+              name={keepLoggedIn ? 'checkbox' : 'square-outline'}
+              size={22}
+              color={keepLoggedIn ? whiteColor : grayColor}
+            />
+            <Text style={styles.checkboxText}>Stay signed In</Text>
+          </TouchableOpacity>
 
           <CustomButton title={SIGN_IN} onPress={handleLogin} loading={isLoading} />
         </View>
@@ -173,6 +192,16 @@ const styles = StyleSheet.create({
   link: {
     color: whiteColor,
     fontWeight: style.fontWeightBold.fontWeight,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacings.large,
+  },
+  checkboxText: {
+    marginLeft: 10,
+    color: whiteColor,
+    fontSize: 16,
   },
 });
 

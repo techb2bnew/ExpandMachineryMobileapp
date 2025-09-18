@@ -15,7 +15,7 @@ export const mediumGray = "#808080";
 export const lightPink = "#FFEBEB";
 export const lightPinkAccent = "#FF8AA1";
 export const blackOpacity7 = 'rgba(0,0,0,0.7)';
-export const greenColor = "#3B8000";
+export const greenColor = "#04df72";
 export const lightColor = "rgb(32,32,32)";
 export const lightBlack = 'rgb(65,65,65)';
 

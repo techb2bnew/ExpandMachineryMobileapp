@@ -7,8 +7,9 @@ import AccountStack from './AccountStack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { View, Text, StyleSheet } from 'react-native';
-import { darkgrayColor, whiteColor, lightPinkAccent, grayColor } from '../constans/Color';
+import { darkgrayColor, whiteColor, lightPinkAccent, grayColor, lightColor } from '../constans/Color';
 import { spacings } from '../constans/Fonts';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 const Tab = createBottomTabNavigator();
 
@@ -49,51 +50,109 @@ const CustomTabLabel = ({ focused, label }) => {
     </View>
   );
 };
+function getRouteHiddenTabs(routeName) {
+  // in screens pr tab hide karna hai
+  const hiddenRoutes = [
+    "SelectEquipment"
+  ];
+
+  return hiddenRoutes.includes(routeName);
+}
 
 export default function BottomTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarStyle: {
-          backgroundColor: darkgrayColor,
-          borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 15,
-          paddingTop: 10,
-          borderTopColor: grayColor
-        },
-        tabBarIcon: ({ focused }) => {
-          let iconName;
-          let badge = null;
-          let iconType = Icon;
+      screenOptions={({ route }) => {
+        // 👇 Nested route ka naam le lo
+        const routeName = getFocusedRouteNameFromRoute(route) ?? '';
 
-          if (route.name === 'HomeTab') iconName = 'home', iconType = Feather;
-          if (route.name === 'InboxTab') iconName = 'inbox', iconType = Feather;
-          if (route.name === 'NotificationsTab') {
-            iconName = 'notifications-outline', iconType = Icon;
-            badge = 2;
-          }
-          if (route.name === 'AccountTab') iconName = 'user', iconType = Feather;
+        // jin screens pe tab bar hide karni hai
+        const hiddenRoutes = ['SelectEquipment', 'IssueDescription', 'RequestSubmitted','SupportChat','TicketDetail'];
 
-          return <CustomTabIcon focused={focused} iconName={iconName} IconComponent={iconType} badge={badge} />;
-        },
-        tabBarLabel: ({ focused }) => {
-          let label;
-          if (route.name === 'HomeTab') label = 'Home';
-          if (route.name === 'InboxTab') label = 'Inbox';
-          if (route.name === 'NotificationsTab') label = 'Notifications';
-          if (route.name === 'AccountTab') label = 'Account';
+        return {
+          headerShown: false,
+          tabBarShowLabel: true,
+          tabBarStyle: [
+            {
+              backgroundColor: lightColor,
+              borderTopWidth: 1,
+              height: 80,
+              paddingBottom: 15,
+              paddingTop: 10,
+              borderTopColor: grayColor,
+            },
+            hiddenRoutes.includes(routeName) && { display: 'none' }, 
+          ],
+          tabBarIcon: ({ focused }) => {
+            let iconName;
+            let badge = null;
+            let iconType = Icon;
 
-          return <CustomTabLabel focused={focused} label={label} />;
-        },
-      })}
+            if (route.name === 'HomeTab') iconName = 'home', iconType = Feather;
+            if (route.name === 'InboxTab') iconName = 'inbox', iconType = Feather;
+            if (route.name === 'NotificationsTab') {
+              iconName = 'notifications-outline', iconType = Icon;
+              badge = 2;
+            }
+            if (route.name === 'AccountTab') iconName = 'user', iconType = Feather;
+
+            return (
+              <CustomTabIcon
+                focused={focused}
+                iconName={iconName}
+                IconComponent={iconType}
+                badge={badge}
+              />
+            );
+          },
+          tabBarLabel: ({ focused }) => {
+            let label;
+            if (route.name === 'HomeTab') label = 'Home';
+            if (route.name === 'InboxTab') label = 'Inbox';
+            if (route.name === 'NotificationsTab') label = 'Notifications';
+            if (route.name === 'AccountTab') label = 'Account';
+
+            return <CustomTabLabel focused={focused} label={label} />;
+          },
+        };
+      }}
     >
-      <Tab.Screen name="HomeTab" component={HomeStack} />
-      <Tab.Screen name="InboxTab" component={InboxStack} />
-      <Tab.Screen name="NotificationsTab" component={NotificationsStack} />
-      <Tab.Screen name="AccountTab" component={AccountStack} />
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeStack}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            navigation.navigate('HomeTab', { screen: 'HomeScreen' });
+          },
+        })}
+      />
+      <Tab.Screen
+        name="InboxTab"
+        component={InboxStack}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            navigation.navigate('InboxTab', { screen: 'InboxScreen' });
+          },
+        })}
+      />
+      <Tab.Screen
+        name="NotificationsTab"
+        component={NotificationsStack}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            navigation.navigate('NotificationsTab', { screen: 'NotificationsScreen' });
+          },
+        })}
+      />
+      <Tab.Screen
+        name="AccountTab"
+        component={AccountStack}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            navigation.navigate('AccountTab', { screen: 'AccountScreen' });
+          },
+        })}
+      />
     </Tab.Navigator>
   );
 }

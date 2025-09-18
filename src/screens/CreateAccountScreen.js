@@ -59,8 +59,8 @@ const CreateAccountScreen = ({ navigation }) => {
         if (!password.trim()) {
             setPasswordError('Password is required');
             valid = false;
-        } else if (password.length < 6) {
-            setPasswordError('Password must be at least 6 characters');
+        } else if (password.length < 8) {
+            setPasswordError('Password must be at least 8 characters');
             valid = false;
         } else {
             setPasswordError('');
@@ -92,12 +92,12 @@ const CreateAccountScreen = ({ navigation }) => {
     };
 
     return (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
@@ -114,7 +114,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             placeholder={ENTER_YOUR_FULL_NAME}
                             icon="person-outline"
                             value={fullName}
-                            onChangeText={setFullName}
+                            onChangeText={(text) => {
+                                setFullName(text);
+                                setFullNameError('');
+                            }}
+                            required={true}
                             error={fullNameError}
                         />
 
@@ -123,7 +127,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             placeholder={ENTER_YOUR_EMAIL}
                             icon="mail-outline"
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                setEmailError('');
+                            }}
+                            required={true}
                             error={emailError}
                         />
 
@@ -132,7 +140,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             placeholder={ENTER_YOUR_PHONE_NUMBER}
                             icon="call-outline"
                             value={phone}
-                            onChangeText={setPhone}
+                            onChangeText={(text) => {
+                                setPhone(text);
+                                setPhoneError(''); 
+                            }}
+                            required={true}
                             error={phoneError}
                             keyboardType="phone-pad"
                         />
@@ -144,7 +156,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             rightIcon={showPassword ? 'eye-outline' : 'eye-off-outline'}
                             secureTextEntry={!showPassword}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                setPasswordError('');
+                            }}
+                            required={true}
                             onRightIconPress={() => setShowPassword(!showPassword)}
                             error={passwordError}
                         />
@@ -156,7 +172,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             rightIcon={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
                             secureTextEntry={!showConfirmPassword}
                             value={confirmPassword}
-                            onChangeText={setConfirmPassword}
+                            onChangeText={(text) => {
+                                setConfirmPassword(text);
+                                setConfirmPasswordError('');
+                            }}
+                            required={true}
                             onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
                             error={confirmPasswordError}
                         />
@@ -179,7 +199,7 @@ const CreateAccountScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor:lightColor,
+        backgroundColor: lightColor,
     },
     scrollContent: {
         flexGrow: 1,
@@ -224,7 +244,7 @@ const styles = StyleSheet.create({
     },
     link: {
         color: whiteColor,
-        fontWeight:style.fontWeightBold.fontWeight,
+        fontWeight: style.fontWeightBold.fontWeight,
     },
 });
 

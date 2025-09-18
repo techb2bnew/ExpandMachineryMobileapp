@@ -5,6 +5,7 @@
 // import { style, spacings } from '../constans/Fonts'
 // import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
 // import { BaseStyle } from '../constans/Style'
+// import { SafeAreaView } from 'react-native-safe-area-context'
 // const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween, alignItemsFlexStart } = BaseStyle;
 
 // const NotificationsScreen = () => {
@@ -96,87 +97,89 @@
 //     )
 //   }
 
-//  const renderNotificationItem = ({ item }) => (
-//   <TouchableOpacity style={styles.notificationCard} activeOpacity={0.8}>
-//     <View
-//       style={[
-//         flexDirectionRow,
-//         alignItemsFlexStart,
-//         { padding: spacings.large },
-//         item.isUnread && { borderLeftWidth: 4, borderLeftColor:lightPinkAccent,borderTopLeftRadius:10 ,borderBottomLeftRadius:10}, // gold strip for unread
-//       ]}
-//     >
+//   const renderNotificationItem = ({ item }) => (
+//     <TouchableOpacity style={styles.notificationCard} activeOpacity={0.8}>
 //       <View
 //         style={[
-//           styles.iconContainer,
-//           { backgroundColor: item.iconColor + 20 },
-//           alignJustifyCenter,
+//           flexDirectionRow,
+//           alignItemsFlexStart,
+//           { padding: spacings.large },
+//           item.isUnread && { borderLeftWidth: 4, borderLeftColor: lightPinkAccent, borderTopLeftRadius: 10, borderBottomLeftRadius: 10 }, // gold strip for unread
 //         ]}
 //       >
-//         <Icon name={item.icon} size={20} color={whiteColor} />
-//       </View>
-
-//       <View style={styles.notificationTextContainer}>
-//         <View style={[styles.titleContainer, flexDirectionRow, alignItemsCenter]}>
-//           <Text style={styles.notificationTitle}>{item.title}</Text>
-//           {item.isUnread && <View style={styles.unreadDot} />}
+//         <View
+//           style={[
+//             styles.iconContainer,
+//             { backgroundColor: item.iconColor + 20 },
+//             alignJustifyCenter,
+//           ]}
+//         >
+//           <Icon name={item.icon} size={20} color={whiteColor} />
 //         </View>
-//         <Text style={styles.notificationDescription}>{item.description}</Text>
-//         <Text style={styles.timestamp}>{item.timestamp}</Text>
-//       </View>
 
-//       <View style={[styles.actionButtons, flexDirectionRow, alignItemsCenter]}>
-//         {item.isUnread && (
+//         <View style={styles.notificationTextContainer}>
+//           <View style={[styles.titleContainer, flexDirectionRow, alignItemsCenter]}>
+//             <Text style={styles.notificationTitle}>{item.title}</Text>
+//             {item.isUnread && <View style={styles.unreadDot} />}
+//           </View>
+//           <Text style={styles.notificationDescription}>{item.description}</Text>
+//           <Text style={styles.timestamp}>{item.timestamp}</Text>
+//         </View>
+
+//         <View style={[styles.actionButtons, flexDirectionRow, alignItemsCenter]}>
+//           {item.isUnread && (
+//             <TouchableOpacity
+//               style={styles.actionButton}
+//               onPress={() => markAsRead(item.id)}
+//             >
+//               <Icon name="checkmark" size={20} color={whiteColor} />
+//             </TouchableOpacity>
+//           )}
 //           <TouchableOpacity
 //             style={styles.actionButton}
-//             onPress={() => markAsRead(item.id)}
+//             onPress={() => deleteNotification(item.id)}
 //           >
-//             <Icon name="checkmark" size={20} color={whiteColor} />
+//             <Icon name="trash-outline" size={20} color={lightPinkAccent} />
 //           </TouchableOpacity>
-//         )}
-//         <TouchableOpacity
-//           style={styles.actionButton}
-//           onPress={() => deleteNotification(item.id)}
-//         >
-//           <Icon name="trash-outline" size={20} color={lightPinkAccent} />
-//         </TouchableOpacity>
+//         </View>
 //       </View>
-//     </View>
-//   </TouchableOpacity>
-// );
+//     </TouchableOpacity>
+//   );
 
 
 //   return (
-//     <View style={styles.container}>
-//       {/* Header */}
-//       <View style={styles.header}>
-//         <View style={[styles.headerTop, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween]}>
-//           <Text style={styles.headerTitle}>Notifications</Text>
-//           <View style={[flexDirectionRow, alignItemsCenter]}>
-//             <View style={styles.unreadBadge}>
-//               <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+//     <SafeAreaView style={styles.container}>
+//       <View style={[styles.container, { padding: spacings.xLarge }]}>
+//         {/* Header */}
+//         <View style={styles.header}>
+//           <View style={[styles.headerTop, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween]}>
+//             <Text style={styles.headerTitle}>Notifications</Text>
+//             <View style={[flexDirectionRow, alignItemsCenter]}>
+//               <View style={styles.unreadBadge}>
+//                 <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+//               </View>
+//               <TouchableOpacity style={styles.settingsButton}>
+//                 <Icon name="settings-outline" size={24} color={whiteColor} />
+//               </TouchableOpacity>
 //             </View>
-//             <TouchableOpacity style={styles.settingsButton}>
-//               <Icon name="settings-outline" size={24} color={whiteColor} />
-//             </TouchableOpacity>
 //           </View>
+//           <Text style={styles.unreadText}>{unreadCount} unread notifications</Text>
+//           <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
+//             <Icon name="checkmark" size={20} color={whiteColor} />
+//             <Text style={styles.markAllText}>Mark All as Read</Text>
+//           </TouchableOpacity>
 //         </View>
-//         <Text style={styles.unreadText}>{unreadCount} unread notifications</Text>
-//         <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-//           <Icon name="checkmark" size={20} color={whiteColor} />
-//           <Text style={styles.markAllText}>Mark All as Read</Text>
-//         </TouchableOpacity>
-//       </View>
 
-//       {/* Notifications List */}
-//       <FlatList
-//         data={notifications}
-//         renderItem={renderNotificationItem}
-//         keyExtractor={(item) => item.id.toString()}
-//         contentContainerStyle={styles.notificationsList}
-//         showsVerticalScrollIndicator={false}
-//       />
-//     </View>
+//         {/* Notifications List */}
+//         <FlatList
+//           data={notifications}
+//           renderItem={renderNotificationItem}
+//           keyExtractor={(item) => item.id.toString()}
+//           contentContainerStyle={styles.notificationsList}
+//           showsVerticalScrollIndicator={false}
+//         />
+//       </View>
+//     </SafeAreaView>
 //   )
 // }
 
@@ -187,7 +190,7 @@
 //     width: wp(100),
 //     height: hp(90),
 //     backgroundColor: lightColor,
-//     padding: spacings.large
+
 //   },
 //   header: {
 //     paddingBottom: spacings.large,
