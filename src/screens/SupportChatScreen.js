@@ -186,6 +186,7 @@ const SupportChatScreen = ({ navigation, route }) => {
           {' '}
           supportType, equipmentData, description,
           <View style={styles.detailsGrid}>
+            .
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Support Type:</Text>
               <Text style={styles.detailValue}>{supportType}</Text>
@@ -469,11 +470,11 @@ const styles = StyleSheet.create({
     color: whiteColor,
     lineHeight: 20,
   },
-   conversationTitle: {
+  conversationTitle: {
     ...style.fontSizeMedium,
     ...style.fontWeightBold,
     color: whiteColor,
-    marginLeft:spacings.medium,
+    marginLeft: spacings.medium,
     marginBottom: spacings.medium,
   },
 });
