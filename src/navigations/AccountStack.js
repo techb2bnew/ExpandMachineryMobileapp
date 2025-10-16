@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AccountScreen from '../screens/AccountScreen';
 import PersonalInformationScreen from '../screens/PersonalInformationScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import AuthStack from './AuthStack';
 
 const Stack = createNativeStackNavigator();
@@ -11,6 +12,7 @@ export default function AccountStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AccountMain" component={AccountScreen} />
       <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

@@ -27,7 +27,7 @@ const CustomTextInput = ({
       ) : null}
       <View style={[
         styles.inputContainer,
-        { borderColor: error ? whiteColor : grayColor }
+        { borderColor: error ? redColor : grayColor }
       ]}>
         {/* Left Icon */}
         {icon ? (
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     color: whiteColor,
   },
   errorText: {
-    color: whiteColor,
+    color: redColor,
     fontSize: style.fontSizeSmall2x.fontSize,
     marginTop: spacings.small,
   },

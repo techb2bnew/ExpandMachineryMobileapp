@@ -7,10 +7,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import { heightPercentageToDP, widthPercentageToDP } from './src/utils';
+import CustomToast from './src/components/CustomToast';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [userToken, setUserToken] = useState(null);
+  const [userToken, setUserToken] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -26,12 +27,16 @@ export default function App() {
     bootstrap();
   }, []);
 
-
-
   return (
     <SafeAreaProvider>
-      <View style={{ width:widthPercentageToDP(100),height:heightPercentageToDP(100), backgroundColor: '#2F2F2F' }}>
-        <NavigationContainer >
+      <View
+        style={{
+          width: widthPercentageToDP(100),
+          height: heightPercentageToDP(100),
+          backgroundColor: '#2F2F2F',
+        }}
+      >
+        <NavigationContainer>
           {isLoading ? (
             <SplashScreen />
           ) : userToken ? (
@@ -40,6 +45,7 @@ export default function App() {
             <AuthStack />
           )}
         </NavigationContainer>
+        <CustomToast />
       </View>
     </SafeAreaProvider>
   );

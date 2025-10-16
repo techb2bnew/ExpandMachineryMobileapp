@@ -12,17 +12,41 @@ import {
   Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightBlack, lightColor, lightPinkAccent, redColor, greenColor } from '../constans/Color';
+import {
+  darkgrayColor,
+  whiteColor,
+  lightGrayColor,
+  grayColor,
+  lightBlack,
+  lightColor,
+  lightPinkAccent,
+  redColor,
+  greenColor,
+} from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
+const {
+  flex,
+  alignJustifyCenter,
+  flexDirectionRow,
+  alignItemsCenter,
+  justifyContentSpaceBetween,
+} = BaseStyle;
 
 const SelectEquipmentScreen = ({ navigation, route }) => {
-  const { supportType } = route.params || { supportType: 'Applications Support' };
-
+  const { supportType } = route.params || {
+    supportType: 'Applications Support',
+  };
+// React.useEffect(() => {
+//   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
+//   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
+// }, [navigation]);
   const [searchText, setSearchText] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
@@ -37,21 +61,13 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
     'Swiss Machine SM-300',
     'Swiss Machine SM-400',
     'Turning Center TC-100',
-    'Turning Center TC-200',
-    'Turning Center TC-300',
-    'CNC Lathe CL-150',
-    'CNC Lathe CL-250',
-    'CNC Lathe CL-350',
-    'Milling Machine MM-100',
-    'Milling Machine MM-200',
-    'Grinding Machine GM-100',
   ];
 
   const filteredModels = equipmentModels.filter(model =>
-    model.toLowerCase().includes(searchText.toLowerCase())
+    model.toLowerCase().includes(searchText.toLowerCase()),
   );
 
-  const handleModelSelect = (model) => {
+  const handleModelSelect = model => {
     setSelectedModel(model);
     setEquipmentData(prev => ({ ...prev, model }));
     setShowDropdown(false);
@@ -65,7 +81,7 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
         equipmentData: {
           model: selectedModel,
           serial: serialNumber,
-        }
+        },
       });
     }
   };
@@ -82,10 +98,13 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+     behavior={Platform.OS === 'ios' ? 'height' : undefined}
     >
-      <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeAreaView  edges={['top']} style={{ flex: 1, backgroundColor: lightColor }}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Header */}
           <View style={[styles.header, flexDirectionRow, alignItemsCenter]}>
             <TouchableOpacity
@@ -103,10 +122,18 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
           <View style={{ padding: spacings.large }}>
             {/* Equipment Model Card */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Equipment Model<Text style={{ color: redColor }}> *</Text></Text>
+              <Text style={styles.cardTitle}>
+                Equipment Model<Text style={{ color: redColor }}> *</Text>
+              </Text>
 
               {/* Search Input */}
-              <View style={[styles.searchContainer, flexDirectionRow, alignItemsCenter]}>
+              <View
+                style={[
+                  styles.searchContainer,
+                  flexDirectionRow,
+                  alignItemsCenter,
+                ]}
+              >
                 <Icon name="search" size={20} color={lightGrayColor} />
                 <TextInput
                   style={styles.searchInput}
@@ -120,10 +147,22 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
 
               {/* Model Selection */}
               <TouchableOpacity
-                style={[styles.modelSelector, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween]}
+                style={[
+                  styles.modelSelector,
+                  flexDirectionRow,
+                  alignItemsCenter,
+                  justifyContentSpaceBetween,
+                ]}
                 onPress={() => setShowDropdown(!showDropdown)}
               >
-                <Text style={[styles.modelSelectorText, selectedModel ? { color: whiteColor } : { color: lightGrayColor }]}>
+                <Text
+                  style={[
+                    styles.modelSelectorText,
+                    selectedModel
+                      ? { color: whiteColor }
+                      : { color: lightGrayColor },
+                  ]}
+                >
                   {selectedModel || 'Choose your equipment model'}
                 </Text>
                 <Icon
@@ -136,26 +175,30 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
               {/* Dropdown Modal */}
               <Modal
                 visible={showDropdown}
-                transparent={true}   // 👈 transparent true kar
-                statusBarTranslucent={true}   // 👈 Android ke liye important
+                transparent={true} // 👈 transparent true kar
+                statusBarTranslucent={true} // 👈 Android ke liye important
                 animationType="fade"
                 onRequestClose={() => setShowDropdown(false)}
               >
                 <View style={styles.modalOverlay}>
                   <View style={styles.dropdownContainer}>
-                    <Text style={[{
-                      color: whiteColor,
-                      textAlign: "center",
-                      padding: spacings.large,
-                      fontSize: style.fontSizeMedium.fontSize,
-                      fontWeight: style.fontWeightThin.fontWeight
-                    }]}>
+                    <Text
+                      style={[
+                        {
+                          color: whiteColor,
+                          textAlign: 'center',
+                          padding: spacings.large,
+                          fontSize: style.fontSizeMedium.fontSize,
+                          fontWeight: style.fontWeightThin.fontWeight,
+                        },
+                      ]}
+                    >
                       Choose your equipment model
                     </Text>
                     <FlatList
                       data={filteredModels}
                       renderItem={renderModelItem}
-                      keyExtractor={(item) => item}
+                      keyExtractor={item => item}
                       showsVerticalScrollIndicator={false}
                       style={styles.dropdownList}
                     />
@@ -166,7 +209,9 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
 
             {/* Serial Number Card */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Serial Number<Text style={{ color: redColor }}> *</Text></Text>
+              <Text style={styles.cardTitle}>
+                Serial Number<Text style={{ color: redColor }}> *</Text>
+              </Text>
 
               <TextInput
                 style={styles.serialInput}
@@ -183,10 +228,19 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
 
             {/* Selected Equipment Card (only show when both are selected) */}
             {selectedModel && serialNumber && (
-              <View style={[styles.selectedCard, { borderWidth: .2, borderColor: greenColor }]}>
-                <Text style={[styles.selectedTitle, { color: greenColor }]}>Selected Equipment</Text>
+              <View
+                style={[
+                  styles.selectedCard,
+                  { borderWidth: 0.2, borderColor: greenColor },
+                ]}
+              >
+                <Text style={[styles.selectedTitle, { color: greenColor }]}>
+                  Selected Equipment
+                </Text>
                 <Text style={styles.selectedModel}>{selectedModel}</Text>
-                <Text style={styles.selectedSerial}>Serial: {serialNumber}</Text>
+                <Text style={styles.selectedSerial}>
+                  Serial: {serialNumber}
+                </Text>
               </View>
             )}
 
@@ -194,12 +248,15 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={[
                 styles.continueButton,
-                (!selectedModel || !serialNumber.trim()) && styles.disabledButton
+                (!selectedModel || !serialNumber.trim()) &&
+                  styles.disabledButton,
               ]}
               onPress={handleContinue}
               disabled={!selectedModel || !serialNumber.trim()}
             >
-              <Text style={styles.continueButtonText}>Continue to Issue Description</Text>
+              <Text style={styles.continueButtonText}>
+                Continue to Issue Description
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -214,7 +271,9 @@ const styles = StyleSheet.create({
     backgroundColor: lightColor,
   },
   scrollView: {
+    // flex: 1,
     flex: 1,
+    backgroundColor: lightColor,
     // padding: spacings.large,
   },
   header: {
@@ -222,7 +281,7 @@ const styles = StyleSheet.create({
     // borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: grayColor,
-    padding: spacings.large
+    padding: spacings.large,
   },
   backButton: {
     padding: spacings.small,
@@ -265,7 +324,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     borderRadius: 10,
     paddingHorizontal: spacings.medium,
-    paddingVertical: Platform.OS === "ios" ? spacings.medium : 0,
+    paddingVertical: Platform.OS === 'ios' ? spacings.medium : 0,
     marginBottom: spacings.medium,
     borderWidth: 1,
     borderColor: grayColor,
@@ -333,7 +392,7 @@ const styles = StyleSheet.create({
     ...style.fontSizeSmall1x,
     ...style.fontWeightThin,
     color: whiteColor,
-    marginTop: spacings.large
+    marginTop: spacings.large,
   },
   selectedCard: {
     backgroundColor: lightBlack,
@@ -378,4 +437,3 @@ const styles = StyleSheet.create({
 });
 
 export default SelectEquipmentScreen;
-

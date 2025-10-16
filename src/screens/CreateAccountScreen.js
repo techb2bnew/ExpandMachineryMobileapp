@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Toast } from '../components/CustomToast';
 import CustomTextInput from '../components/CustomTextInput';
 import CustomButton from '../components/CustomButton';
 import { grayColor, lightBlack, lightColor, whiteColor } from '../constans/Color';
@@ -18,6 +19,7 @@ const CreateAccountScreen = ({ navigation }) => {
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Error states
     const [fullNameError, setFullNameError] = useState('');
@@ -25,6 +27,9 @@ const CreateAccountScreen = ({ navigation }) => {
     const [phoneError, setPhoneError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [confirmPasswordError, setConfirmPasswordError] = useState('');
+
+    // Check if all fields are filled and passwords match
+    const isFormComplete = fullName.trim() && email.trim() && phone.trim() && password.trim() && confirmPassword.trim();
 
     const validateForm = () => {
         let valid = true;
@@ -49,11 +54,20 @@ const CreateAccountScreen = ({ navigation }) => {
         if (!phone.trim()) {
             setPhoneError('Phone number is required');
             valid = false;
-        } else if (!/^[0-9]{10}$/.test(phone)) {
-            setPhoneError('Enter a valid 10-digit phone number');
-            valid = false;
         } else {
-            setPhoneError('');
+            // Remove all non-numeric characters
+            const cleanPhone = phone.replace(/\D/g, '');
+            
+            // Check for valid US phone number (10 digits)
+            if (cleanPhone.length !== 10) {
+                setPhoneError('Phone number must be 10 digits');
+                valid = false;
+            } else if (!/^[2-9]\d{2}[2-9]\d{2}\d{4}$/.test(cleanPhone)) {
+                setPhoneError('Enter a valid US phone number');
+                valid = false;
+            } else {
+                setPhoneError('');
+            }
         }
 
         if (!password.trim()) {
@@ -79,15 +93,66 @@ const CreateAccountScreen = ({ navigation }) => {
         return valid;
     };
 
-    const handleCreateAccount = () => {
-        if (validateForm()) {
-            console.log('Create Account ✅', {
-                fullName,
-                email,
-                phone,
-                password,
+    const handleCreateAccount = async () => {
+        if (!validateForm() || !isFormComplete) {
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const payload = {
+                name: fullName.trim(),
+                email: email.trim().toLowerCase(),
+                phoneNumber: phone.replace(/\D/g, ''), // Send only digits
+                password: password.trim()
+            };
+
+            console.log('API Payload:', payload);
+
+            const response = await fetch('http://54.67.70.211/api/app/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
             });
-            // API call yaha karega
+
+            const data = await response.json();
+            console.log('API Response:', data);
+
+            if (response.ok) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Account created successfully!',
+                    visibilityTime: 3000,
+                    onPress: () => navigation.navigate('Login')
+                });
+                // Navigate to login after a short delay
+                setTimeout(() => {
+                    navigation.navigate('Login');
+                }, 1500);
+            } else {
+                // Handle API errors
+                const errorMsg = data.message || data.error || 'Something went wrong. Please try again.';
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: errorMsg,
+                    visibilityTime: 4000,
+                });
+            }
+        } catch (error) {
+            console.error('Registration Error:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Network Error',
+                text2: 'Please check your connection and try again.',
+                visibilityTime: 4000,
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -128,25 +193,42 @@ const CreateAccountScreen = ({ navigation }) => {
                             icon="mail-outline"
                             value={email}
                             onChangeText={(text) => {
-                                setEmail(text);
+                                setEmail(text.toLowerCase());
                                 setEmailError('');
                             }}
                             required={true}
                             error={emailError}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
                         />
 
                         <CustomTextInput
                             label={PHONE_NUMBER}
-                            placeholder={ENTER_YOUR_PHONE_NUMBER}
+                            placeholder="(555) 123-4567"
                             icon="call-outline"
                             value={phone}
                             onChangeText={(text) => {
-                                setPhone(text);
-                                setPhoneError(''); 
+                                // Format phone number as user types
+                                const cleaned = text.replace(/\D/g, '');
+                                let formatted = '';
+                                
+                                if (cleaned.length >= 1) {
+                                    formatted = `(${cleaned.substring(0, 3)}`;
+                                }
+                                if (cleaned.length >= 4) {
+                                    formatted += `) ${cleaned.substring(3, 6)}`;
+                                }
+                                if (cleaned.length >= 7) {
+                                    formatted += `-${cleaned.substring(6, 10)}`;
+                                }
+                                
+                                setPhone(formatted);
+                                setPhoneError('');
                             }}
                             required={true}
                             error={phoneError}
                             keyboardType="phone-pad"
+                            maxLength={14}
                         />
 
                         <CustomTextInput
@@ -181,7 +263,11 @@ const CreateAccountScreen = ({ navigation }) => {
                             error={confirmPasswordError}
                         />
 
-                        <CustomButton title={CREATE_ACCOUNT} onPress={handleCreateAccount} />
+                        <CustomButton 
+                            title={isLoading ? 'Creating Account...' : CREATE_ACCOUNT} 
+                            onPress={handleCreateAccount}
+                            disabled={!isFormComplete || isLoading}
+                        />
                     </View>
 
                     <View style={styles.footer}>

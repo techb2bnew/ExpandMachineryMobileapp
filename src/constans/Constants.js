@@ -16,3 +16,7 @@ export const CONFIRM_YOUR_PASSWORD = "Confirm your password";
 export const ALREADY_HAVE_ACCOUNT = "Already have an account?";
 export const SIGN_UP = "Sign Up";
 export const JOIN_EXPAND = "Join EXPAND Support";
+
+export const API_ENDPOINTS = {
+    BASE_URL: 'http://54.67.70.211',
+  };

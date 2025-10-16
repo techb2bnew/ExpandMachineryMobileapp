@@ -14,14 +14,34 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
-import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightBlack, lightColor, lightPinkAccent, supportGreen, redColor, greenColor } from '../constans/Color';
+import {
+  darkgrayColor,
+  whiteColor,
+  lightGrayColor,
+  grayColor,
+  lightBlack,
+  lightColor,
+  lightPinkAccent,
+  supportGreen,
+  redColor,
+  greenColor,
+} from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ConfirmationModal from '../components/Modals/ConfirmationModal';
 
-const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
+const {
+  flex,
+  alignJustifyCenter,
+  flexDirectionRow,
+  alignItemsCenter,
+  justifyContentSpaceBetween,
+} = BaseStyle;
 
 const TicketDetailScreen = ({ navigation, route }) => {
   const { ticket } = route.params;
@@ -36,41 +56,42 @@ const TicketDetailScreen = ({ navigation, route }) => {
     serial: ticket.serial || 'GT2540-2023-015',
     category: ticket.category || 'Applications Support',
     createdDate: ticket.createdDate || '18/01/2024',
-    description: ticket.description || 'Unable to activate new CAM software license',
+    description:
+      ticket.description || 'Unable to activate new CAM software license',
     messages: ticket.messages || [
       {
         id: 1,
-        text: 'I received the new CAM software license key but I\'m unable to activate it. Getting error code AL-404.',
+        text: "I received the new CAM software license key but I'm unable to activate it. Getting error code AL-404.",
         isUser: true,
         timestamp: '7:30 PM',
         date: 'Jan 18',
-        sender: 'John Smith'
+        sender: 'John Smith',
       },
       {
         id: 2,
-        text: 'I see you\'re getting error AL-404. This usually means the license server can\'t validate the key. Can you confirm you\'re connected to the internet and try again?',
+        text: "I see you're getting error AL-404. This usually means the license server can't validate the key. Can you confirm you're connected to the internet and try again?",
         isUser: false,
         timestamp: '8:00 PM',
         date: 'Jan 18',
-        sender: 'Mike Chen'
+        sender: 'Mike Chen',
       },
       {
         id: 3,
-        text: 'Yes, I\'m connected to the internet. I\'ve tried multiple times but still getting the same error.',
+        text: "Yes, I'm connected to the internet. I've tried multiple times but still getting the same error.",
         isUser: true,
         timestamp: '8:30 PM',
         date: 'Jan 18',
-        sender: 'John Smith'
+        sender: 'John Smith',
       },
       {
         id: 4,
-        text: 'Let me check the license key in our system. I\'ll get back to you within 24 hours with a solution.',
+        text: "Let me check the license key in our system. I'll get back to you within 24 hours with a solution.",
         isUser: false,
         timestamp: '2:30 PM',
         date: 'Jan 21',
-        sender: 'Mike Chen'
-      }
-    ]
+        sender: 'Mike Chen',
+      },
+    ],
   };
 
   const [messages, setMessages] = useState(ticketData.messages);
@@ -83,14 +104,14 @@ const TicketDetailScreen = ({ navigation, route }) => {
   const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
-      if (Platform.OS === "android") {
-        setKeyboardOffset(30); 
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      if (Platform.OS === 'android') {
+        setKeyboardOffset(30);
       }
     });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      if (Platform.OS === "android") {
-        setKeyboardOffset(0); 
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      if (Platform.OS === 'android') {
+        setKeyboardOffset(0);
       }
     });
 
@@ -115,7 +136,10 @@ const TicketDetailScreen = ({ navigation, route }) => {
         id: Date.now(),
         text: inputText.trim(),
         isUser: true,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
         date: new Date().toLocaleDateString(),
       };
 
@@ -126,9 +150,12 @@ const TicketDetailScreen = ({ navigation, route }) => {
       setTimeout(() => {
         const supportResponse = {
           id: Date.now() + 1,
-          text: "Thank you for your message. Our support team will review and respond shortly.",
+          text: 'Thank you for your message. Our support team will review and respond shortly.',
           isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
           date: new Date().toLocaleDateString(),
         };
         setMessages(prev => [...prev, supportResponse]);
@@ -151,7 +178,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
     navigation.goBack();
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     switch (status) {
       case 'Resolved':
         return greenColor;
@@ -165,24 +192,34 @@ const TicketDetailScreen = ({ navigation, route }) => {
   };
 
   const renderMessage = ({ item }) => (
-    <View style={[
-      styles.messageContainer,
-      item.isUser ? styles.userMessageContainer : styles.supportMessageContainer
-    ]}>
-      <View style={[
-        styles.messageBubble,
-        item.isUser ? styles.userMessageBubble : styles.supportMessageBubble
-      ]}>
-        <Text style={[
-          styles.messageText,
-          item.isUser ? styles.userMessageText : styles.supportMessageText
-        ]}>
+    <View
+      style={[
+        styles.messageContainer,
+        item.isUser
+          ? styles.userMessageContainer
+          : styles.supportMessageContainer,
+      ]}
+    >
+      <View
+        style={[
+          styles.messageBubble,
+          item.isUser ? styles.userMessageBubble : styles.supportMessageBubble,
+        ]}
+      >
+        <Text
+          style={[
+            styles.messageText,
+            item.isUser ? styles.userMessageText : styles.supportMessageText,
+          ]}
+        >
           {item.text}
         </Text>
       </View>
       <View style={styles.messageFooter}>
         <Text style={styles.senderName}>{item.sender}</Text>
-        <Text style={styles.timestamp}>• {item.date}, {item.timestamp}</Text>
+        <Text style={styles.timestamp}>
+          • {item.date}, {item.timestamp}
+        </Text>
       </View>
     </View>
   );
@@ -190,7 +227,14 @@ const TicketDetailScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween]}>
+      <View
+        style={[
+          styles.header,
+          flexDirectionRow,
+          alignItemsCenter,
+          justifyContentSpaceBetween,
+        ]}
+      >
         <View style={[flexDirectionRow, alignItemsCenter]}>
           <TouchableOpacity
             style={styles.backButton}
@@ -204,26 +248,49 @@ const TicketDetailScreen = ({ navigation, route }) => {
           </View>
           <View style={[flexDirectionRow, alignItemsCenter]}>
             {!isUnread && (
-              <Icon name="checkmark-circle" size={24} color={greenColor} style={styles.statusIcon} />
+              <Icon
+                name="checkmark-circle"
+                size={24}
+                color={greenColor}
+                style={styles.statusIcon}
+              />
             )}
             {isUnread && (
-              <Icon name="alert-circle-outline" size={24} color={redColor} style={styles.statusIcon} />
+              <Icon
+                name="alert-circle-outline"
+                size={24}
+                color={redColor}
+                style={styles.statusIcon}
+              />
             )}
             <TouchableOpacity onPress={handleMenuPress}>
               <Icon name="ellipsis-vertical" size={24} color={whiteColor} />
             </TouchableOpacity>
           </View>
         </View>
-
       </View>
 
       {/* Ticket Details */}
       <View style={styles.detailsCard}>
-        <View style={[styles.statusRow, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween]}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ticketData.status) }]}>
+        <View
+          style={[
+            styles.statusRow,
+            flexDirectionRow,
+            alignItemsCenter,
+            justifyContentSpaceBetween,
+          ]}
+        >
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(ticketData.status) },
+            ]}
+          >
             <Text style={styles.statusText}>{ticketData.status}</Text>
           </View>
-          <Text style={styles.updatedDate}>Updated {ticketData.updatedDate}</Text>
+          <Text style={styles.updatedDate}>
+            Updated {ticketData.updatedDate}
+          </Text>
         </View>
 
         <View style={styles.detailsGrid}>
@@ -267,7 +334,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={item => item.id.toString()}
             style={styles.messagesList}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
@@ -278,7 +345,9 @@ const TicketDetailScreen = ({ navigation, route }) => {
         {isUnread && (
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Reply to support team</Text>
-            <View style={[styles.inputArea, flexDirectionRow, alignItemsCenter]}>
+            <View
+              style={[styles.inputArea, flexDirectionRow, alignItemsCenter]}
+            >
               <TextInput
                 style={styles.textInput}
                 placeholder="Type your message..."
@@ -292,7 +361,7 @@ const TicketDetailScreen = ({ navigation, route }) => {
                 style={[
                   styles.sendButton,
                   alignJustifyCenter,
-                  !inputText.trim() && styles.disabledSendButton
+                  !inputText.trim() && styles.disabledSendButton,
                 ]}
                 onPress={handleSendMessage}
                 disabled={!inputText.trim()}
@@ -491,7 +560,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   userMessageBubble: {
-    backgroundColor: "#490517",
+    backgroundColor: '#490517',
     borderBottomRightRadius: 4,
   },
   supportMessageBubble: {

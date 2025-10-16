@@ -9,22 +9,49 @@ import {
   Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightBlack, lightColor, lightPinkAccent, supportGreen, greenColor } from '../constans/Color';
+import {
+  darkgrayColor,
+  whiteColor,
+  lightGrayColor,
+  grayColor,
+  lightBlack,
+  lightColor,
+  lightPinkAccent,
+  supportGreen,
+  greenColor,
+} from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
+const {
+  flex,
+  alignJustifyCenter,
+  flexDirectionRow,
+  alignItemsCenter,
+  justifyContentSpaceBetween,
+} = BaseStyle;
 
 const RequestSubmittedScreen = ({ navigation, route }) => {
-  const { supportType, equipmentData, description, attachedImages, ticketNumber } = route.params;
-
+  const {
+    supportType,
+    equipmentData,
+    description,
+    attachedImages,
+    ticketNumber,
+  } = route.params;
 
   const handleStartChat = () => {
     console.log('Start chat for ticket:', ticketNumber);
     navigation.navigate('SupportChat', {
-      ticketNumber
+      ticketNumber, supportType,
+    equipmentData,
+    description,
+    attachedImages,
     });
   };
 
@@ -39,152 +66,172 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Request Submitted</Text>
-        <Text style={styles.headerSubtitle}>We'll be in touch soon</Text>
-      </View>
-      {/* Success Icon */}
-      <View style={[styles.successIcon, alignJustifyCenter]}>
-        <Icon name="checkmark-circle-outline" size={40} color={greenColor} />
-      </View>
-      {/* Support Request Confirmation Card */}
-      <View style={styles.confirmationCard}>
-        <Text style={styles.successMessage}>Support Request Submitted Successfully!</Text>
-        <Text style={styles.ticketLabel}>Your support ticket number is:</Text>
-
-        <View style={[styles.ticketNumberContainer, alignJustifyCenter]}>
-          <Text style={styles.ticketNumber}>{ticketNumber}</Text>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Request Submitted</Text>
+          <Text style={styles.headerSubtitle}>We'll be in touch soon</Text>
         </View>
-
-        <Text style={styles.saveInstruction}>Please save this number for your records</Text>
-      </View>
-
-      {/* Start Chat Button */}
-      <TouchableOpacity
-        style={[styles.chatButton, flexDirectionRow, alignItemsCenter]}
-        onPress={handleStartChat}
-      >
-        <Icon name="chatbubble-outline" size={20} color={whiteColor} />
-        <Text style={styles.chatButtonText}>Start Chat for this Ticket</Text>
-      </TouchableOpacity>
-
-      {/* Ticket Details Card */}
-      <View style={styles.detailsCard}>
-        <View style={[styles.cardHeader, flexDirectionRow, alignItemsCenter]}>
-          <Icon name="time-outline" size={20} color={whiteColor} />
-          <Text style={styles.cardTitle}>Ticket Details</Text>
+        {/* Success Icon */}
+        <View style={[styles.successIcon, alignJustifyCenter]}>
+          <Icon name="checkmark-circle-outline" size={40} color={greenColor} />
         </View>
+        {/* Support Request Confirmation Card */}
+        <View style={styles.confirmationCard}>
+          <Text style={styles.successMessage}>
+            Support Request Submitted Successfully!
+          </Text>
+          <Text style={styles.ticketLabel}>Your support ticket number is:</Text>
 
-        <View style={styles.detailRow}>
-          <View style={[flexDirectionRow, alignItemsCenter]}>
-            <Icon name="person-outline" size={16} color={whiteColor} />
-            <View style={{ paddingHorizontal: spacings.large }}>
-              <Text style={styles.detailLabel}>Category</Text>
-              <Text style={styles.detailValue}>{supportType}</Text>
-            </View>
+          <View style={[styles.ticketNumberContainer, alignJustifyCenter]}>
+            <Text style={styles.ticketNumber}>{ticketNumber}</Text>
           </View>
-        </View>
 
-        <View style={styles.detailRow}>
-          <View style={[flexDirectionRow, alignItemsCenter]}>
-            <Icon name="chatbubble-outline" size={16} color={whiteColor} />
-            <View style={{ paddingHorizontal: spacings.large }}>
-              <Text style={styles.detailLabel}>Description</Text>
-              <Text style={styles.detailValue}>{description}</Text>
-            </View>
-          </View>
-        </View>
-
-       {attachedImages.length > 0 && <View style={styles.detailRow}>
-          <View style={[flexDirectionRow, alignItemsCenter]}>
-            <Icon name="camera-outline" size={16} color={whiteColor} />
-            <View style={{ paddingHorizontal: spacings.large, flex: 1 }}>
-              <Text style={styles.detailLabel}>Attachments</Text>
-              <Text style={styles.detailValue}>
-                {attachedImages.length} photo{attachedImages.length !== 1 ? 's' : ''} attached
-              </Text>
-            </View>
-          </View>
-        </View>}
-        {attachedImages.length > 0 && (
-          <View style={styles.imagesContainer}>
-            {attachedImages.map((img) => (
-              <View key={img.id} style={styles.imageWrapper}>
-                <Image
-                  source={{ uri: img.uri }}
-                  style={styles.imagePreview}
-                />
-              </View>
-            ))}
-          </View>
-        )}
-
-        {equipmentData && (
-          <View style={styles.detailRow}>
-            <View style={[flexDirectionRow, alignItemsCenter]}>
-              <Icon name="settings-outline" size={16} color={whiteColor} />
-              <View style={{ paddingHorizontal: spacings.large }}>
-                <Text style={styles.detailLabel}>Equipment</Text>
-                <Text style={styles.detailValue}>{equipmentData.model}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* What Happens Next Card */}
-      <View style={styles.nextStepsCard}>
-        <Text style={styles.cardTitle}>What happens next?</Text>
-
-        <View style={styles.stepItem}>
-          <View style={[styles.stepBullet, alignJustifyCenter]}>
-            <View style={styles.bulletDot} />
-          </View>
-          <Text style={styles.stepText}>Our support team will review your request</Text>
-        </View>
-
-        <View style={styles.stepItem}>
-          <View style={[styles.stepBullet, alignJustifyCenter]}>
-            <View style={styles.bulletDot} />
-          </View>
-          <Text style={styles.stepText}>We'll contact you using the information you provided</Text>
-        </View>
-
-        <View style={styles.stepItem}>
-          <View style={[styles.stepBullet, alignJustifyCenter]}>
-            <View style={styles.bulletDot} />
-          </View>
-          <Text style={styles.stepText}>You can track your request in the History tab</Text>
-        </View>
-
-        <View style={styles.responseTimeContainer}>
-          <Text style={styles.responseTimeLabel}>Response Time:</Text>
-          <Text style={styles.responseTimeText}>
-            We typically respond within 1-2 business hours during regular business hours.
+          <Text style={styles.saveInstruction}>
+            Please save this number for your records
           </Text>
         </View>
-      </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+        {/* Start Chat Button */}
         <TouchableOpacity
-          style={[styles.submitAnotherButton, flexDirectionRow, alignItemsCenter]}
-          onPress={handleSubmitAnother}
+          style={[styles.chatButton, flexDirectionRow, alignItemsCenter]}
+          onPress={handleStartChat}
         >
-          <Icon name="refresh-outline" size={20} color={whiteColor} />
-          <Text style={styles.submitAnotherText}>Submit Another Request</Text>
+          <Icon name="chatbubble-outline" size={20} color={whiteColor} />
+          <Text style={styles.chatButtonText}>Start Chat for this Ticket</Text>
         </TouchableOpacity>
 
-        <View style={styles.contactInfo}>
-          <Text style={styles.contactText}>Need immediate assistance? Call our support line at</Text>
-          <TouchableOpacity onPress={handleCallSupport}>
-            <Text style={styles.phoneNumber}>1-800-EXPAND-1</Text>
-          </TouchableOpacity>
+        {/* Ticket Details Card */}
+        <View style={styles.detailsCard}>
+          <View style={[styles.cardHeader, flexDirectionRow, alignItemsCenter]}>
+            <Icon name="time-outline" size={20} color={whiteColor} />
+            <Text style={styles.cardTitle}>Ticket Details</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <View style={[flexDirectionRow, alignItemsCenter]}>
+              <Icon name="person-outline" size={16} color={whiteColor} />
+              <View style={{ paddingHorizontal: spacings.large }}>
+                <Text style={styles.detailLabel}>Category</Text>
+                <Text style={styles.detailValue}>{supportType}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.detailRow}>
+            <View style={[flexDirectionRow, alignItemsCenter]}>
+              <Icon name="chatbubble-outline" size={16} color={whiteColor} />
+              <View style={{ paddingHorizontal: spacings.large }}>
+                <Text style={styles.detailLabel}>Description</Text>
+                <Text style={styles.detailValue}>{description}</Text>
+              </View>
+            </View>
+          </View>
+
+          {attachedImages.length > 0 && (
+            <View style={styles.detailRow}>
+              <View style={[flexDirectionRow, alignItemsCenter]}>
+                <Icon name="camera-outline" size={16} color={whiteColor} />
+                <View style={{ paddingHorizontal: spacings.large, flex: 1 }}>
+                  <Text style={styles.detailLabel}>Attachments</Text>
+                  <Text style={styles.detailValue}>
+                    {attachedImages.length} photo
+                    {attachedImages.length !== 1 ? 's' : ''} attached
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+          {attachedImages.length > 0 && (
+            <View style={styles.imagesContainer}>
+              {attachedImages?.map(img => (
+                <View key={img.id} style={styles.imageWrapper}>
+                  <Image
+                    source={{ uri: img.uri }}
+                    style={styles.imagePreview}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {equipmentData && (
+            <View style={styles.detailRow}>
+              <View style={[flexDirectionRow, alignItemsCenter]}>
+                <Icon name="settings-outline" size={16} color={whiteColor} />
+                <View style={{ paddingHorizontal: spacings.large }}>
+                  <Text style={styles.detailLabel}>Equipment</Text>
+                  <Text style={styles.detailValue}>{equipmentData.model}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
-      </View>
-    </ScrollView>
+
+        {/* What Happens Next Card */}
+        <View style={styles.nextStepsCard}>
+          <Text style={styles.cardTitle}>What happens next?</Text>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBullet, alignJustifyCenter]}>
+              <View style={styles.bulletDot} />
+            </View>
+            <Text style={styles.stepText}>
+              Our support team will review your request
+            </Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBullet, alignJustifyCenter]}>
+              <View style={styles.bulletDot} />
+            </View>
+            <Text style={styles.stepText}>
+              We'll contact you using the information you provided
+            </Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBullet, alignJustifyCenter]}>
+              <View style={styles.bulletDot} />
+            </View>
+            <Text style={styles.stepText}>
+              You can track your request in the History tab
+            </Text>
+          </View>
+
+          <View style={styles.responseTimeContainer}>
+            <Text style={styles.responseTimeLabel}>Response Time:</Text>
+            <Text style={styles.responseTimeText}>
+              We typically respond within 1-2 business hours during regular
+              business hours.
+            </Text>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={[
+              styles.submitAnotherButton,
+              flexDirectionRow,
+              alignItemsCenter,
+            ]}
+            onPress={handleSubmitAnother}
+          >
+            <Icon name="refresh-outline" size={20} color={whiteColor} />
+            <Text style={styles.submitAnotherText}>Submit Another Request</Text>
+          </TouchableOpacity>
+
+          <View style={styles.contactInfo}>
+            <Text style={styles.contactText}>
+              Need immediate assistance? Call our support line at
+            </Text>
+            <TouchableOpacity onPress={handleCallSupport}>
+              <Text style={styles.phoneNumber}>1-800-EXPAND-1</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -198,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: spacings.large,
     borderBottomWidth: 1,
     borderColor: grayColor,
-    padding: spacings.large
+    padding: spacings.large,
   },
   headerTitle: {
     fontSize: style.fontSizeLarge.fontSize,
@@ -217,7 +264,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: supportGreen + 40,
     marginBottom: spacings.xxLarge,
-    alignSelf: "center"
+    alignSelf: 'center',
   },
   confirmationCard: {
     backgroundColor: lightBlack,
@@ -257,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacings.medium,
     marginBottom: spacings.medium,
     borderWidth: 0.5,
-    borderColor: greenColor
+    borderColor: greenColor,
   },
   ticketNumber: {
     ...style.fontSizeNormal,
@@ -276,7 +323,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacings.large,
     marginBottom: spacings.large,
     alignItems: 'center',
-    justifyContent: "center"
+    justifyContent: 'center',
   },
   chatButtonText: {
     ...style.fontSizeNormal,
@@ -413,22 +460,22 @@ const styles = StyleSheet.create({
     ...style.fontWeightThin,
     color: whiteColor,
   },
-imagesContainer: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: spacings.medium, // agar React Native version support karta hai
-  marginTop: spacings.medium,
-},
-imageWrapper: {
-  marginBottom: spacings.medium,
-},
-imagePreview: {
-  width: wp(27.5),
-  height: wp(27),
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: lightGrayColor,
-},
+  imagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacings.medium, // agar React Native version support karta hai
+    marginTop: spacings.medium,
+  },
+  imageWrapper: {
+    marginBottom: spacings.medium,
+  },
+  imagePreview: {
+    width: wp(27.5),
+    height: wp(27),
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: lightGrayColor,
+  },
 });
 
 export default RequestSubmittedScreen;

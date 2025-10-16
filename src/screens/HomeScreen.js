@@ -50,17 +50,17 @@ const HomeScreen = ({ navigation }) => {
   const handleSupportPress = (category) => {
     console.log('Support category pressed:', category.title)
     // First 3 cards go to Select Equipment screen
-    // if (category.id <= 3) {
-    //   navigation.navigate('SelectEquipment', {
-    //     supportType: category.title
-    //   });
-    // } else {
-    //   // 4th card (Sales Support) goes to Issue Description directly
-    //   navigation.navigate('IssueDescription', {
-    //     supportType: category.title,
-    //     equipmentData: null // No equipment needed for sales support
-    //   });
-    // }
+    if (category.id <= 3) {
+      navigation.navigate('SelectEquipment', {
+        supportType: category.title
+      });
+    } else {
+      // 4th card (Sales Support) goes to Issue Description directly
+      navigation.navigate('IssueDescription', {
+        supportType: category.title,
+        equipmentData: null // No equipment needed for sales support
+      });
+    }
   }
 
   return (
@@ -81,7 +81,7 @@ const HomeScreen = ({ navigation }) => {
             horizontal={false}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[styles.categoryCard, flexDirectionRow, alignItemsCenter]}
+                style={[styles.categoryCard, flexDirectionRow, alignItemsCenter, { borderColor: item.iconColor, borderWidth: 0.5 }]}
                 onPress={() => handleSupportPress(item)}
                 activeOpacity={0.8}
               >

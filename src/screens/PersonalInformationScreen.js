@@ -22,14 +22,14 @@ const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyCon
 const PersonalInformationScreen = ({ navigation }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState({
-    fullName: 'John Smith',
-    email: 'shubhambase2brand@gmail.com',
-    phone: '+1 (555) 123-4567',
+    fullName: 'Ramnish',
+    email: 'ramnishbase2brand@gmail.com',
+    phone: '+91 8219769045',
   });
   const [editData, setEditData] = useState({
-    fullName: 'John Smith',
-    email: 'shubhambase2brand@gmail.com',
-    phone: '+1 (555) 123-4567',
+    fullName: 'Ramnish',
+    email: 'ramnishbase2brand@gmail.com',
+    phone: '+91 8219769045',
   });
 
   const handleEdit = () => {

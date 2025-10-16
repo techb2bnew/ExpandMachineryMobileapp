@@ -7,7 +7,13 @@ import AccountStack from './AccountStack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import { View, Text, StyleSheet } from 'react-native';
-import { darkgrayColor, whiteColor, lightPinkAccent, grayColor, lightColor } from '../constans/Color';
+import {
+  darkgrayColor,
+  whiteColor,
+  lightPinkAccent,
+  grayColor,
+  lightColor,
+} from '../constans/Color';
 import { spacings } from '../constans/Fonts';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
@@ -22,10 +28,7 @@ const CustomTabIcon = ({ focused, iconName, badge, IconComponent }) => {
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
-      <View style={[
-        styles.iconWrapper,
-        focused && styles.activeIconWrapper
-      ]}>
+      <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
         <IconComponent
           name={iconName}
           size={22}
@@ -40,10 +43,7 @@ const CustomTabIcon = ({ focused, iconName, badge, IconComponent }) => {
 const CustomTabLabel = ({ focused, label }) => {
   return (
     <View style={styles.labelContainer}>
-      <Text style={[
-        styles.labelText,
-        focused && styles.activeLabelText
-      ]}>
+      <Text style={[styles.labelText, focused && styles.activeLabelText]}>
         {label}
       </Text>
       {focused && <View style={styles.activeDot} />}
@@ -52,9 +52,7 @@ const CustomTabLabel = ({ focused, label }) => {
 };
 function getRouteHiddenTabs(routeName) {
   // in screens pr tab hide karna hai
-  const hiddenRoutes = [
-    "SelectEquipment"
-  ];
+  const hiddenRoutes = ['SelectEquipment'];
 
   return hiddenRoutes.includes(routeName);
 }
@@ -62,12 +60,19 @@ function getRouteHiddenTabs(routeName) {
 export default function BottomTabs() {
   return (
     <Tab.Navigator
+    style={{backgroundColor:"red"}}
       screenOptions={({ route }) => {
         // 👇 Nested route ka naam le lo
         const routeName = getFocusedRouteNameFromRoute(route) ?? '';
 
         // jin screens pe tab bar hide karni hai
-        const hiddenRoutes = ['SelectEquipment', 'IssueDescription', 'RequestSubmitted','SupportChat','TicketDetail'];
+        const hiddenRoutes = [
+          'SelectEquipment',
+          'IssueDescription',
+          'RequestSubmitted',
+          'SupportChat',
+          'TicketDetail',
+        ];
 
         return {
           headerShown: false,
@@ -81,20 +86,23 @@ export default function BottomTabs() {
               paddingTop: 10,
               borderTopColor: grayColor,
             },
-            hiddenRoutes.includes(routeName) && { display: 'none' }, 
+            hiddenRoutes.includes(routeName) && { display: 'none' },
           ],
           tabBarIcon: ({ focused }) => {
             let iconName;
             let badge = null;
             let iconType = Icon;
 
-            if (route.name === 'HomeTab') iconName = 'home', iconType = Feather;
-            if (route.name === 'InboxTab') iconName = 'inbox', iconType = Feather;
+            if (route.name === 'HomeTab')
+              (iconName = 'home'), (iconType = Feather);
+            if (route.name === 'InboxTab')
+              (iconName = 'inbox'), (iconType = Feather);
             if (route.name === 'NotificationsTab') {
-              iconName = 'notifications-outline', iconType = Icon;
+              (iconName = 'notifications-outline'), (iconType = Icon);
               badge = 2;
             }
-            if (route.name === 'AccountTab') iconName = 'user', iconType = Feather;
+            if (route.name === 'AccountTab')
+              (iconName = 'user'), (iconType = Feather);
 
             return (
               <CustomTabIcon
@@ -140,7 +148,9 @@ export default function BottomTabs() {
         component={NotificationsStack}
         listeners={({ navigation }) => ({
           tabPress: e => {
-            navigation.navigate('NotificationsTab', { screen: 'NotificationsScreen' });
+            navigation.navigate('NotificationsTab', {
+              screen: 'NotificationsScreen',
+            });
           },
         })}
       />
