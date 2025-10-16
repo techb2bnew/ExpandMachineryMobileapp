@@ -122,7 +122,7 @@ const InboxScreen = ({ navigation }) => {
       serial: 'GT2540-2023-015',
       category: 'Applications Support',
       createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
+      description: 'Unable to activate new CAM software license', 
     },
     {
       id: 6,
