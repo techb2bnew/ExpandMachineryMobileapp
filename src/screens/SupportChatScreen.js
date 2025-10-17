@@ -216,7 +216,9 @@ const SupportChatScreen = ({ navigation, route }) => {
           </View>
         </View>
       </View>
+
       <Text style={styles.conversationTitle}>Conversation</Text>
+      <View style={{ borderTopWidth: 1, borderTopColor: grayColor }}></View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
