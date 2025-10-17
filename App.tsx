@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import { heightPercentageToDP, widthPercentageToDP } from './src/utils';
 import CustomToast from './src/components/CustomToast';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -28,25 +29,27 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <View
-        style={{
-          width: widthPercentageToDP(100),
-          height: heightPercentageToDP(100),
-          backgroundColor: '#2F2F2F',
-        }}
-      >
-        <NavigationContainer>
-          {isLoading ? (
-            <SplashScreen />
-          ) : userToken ? (
-            <MainStack />
-          ) : (
-            <AuthStack />
-          )}
-        </NavigationContainer>
-        <CustomToast />
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <View
+          style={{
+            width: widthPercentageToDP(100),
+            height: heightPercentageToDP(100),
+            backgroundColor: '#2F2F2F',
+          }}
+        >
+          <NavigationContainer>
+            {isLoading ? (
+              <SplashScreen />
+            ) : userToken ? (
+              <MainStack />
+            ) : (
+              <AuthStack />
+            )}
+          </NavigationContainer>
+          <CustomToast />
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
