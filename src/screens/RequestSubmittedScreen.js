@@ -128,26 +128,26 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {attachedImages.length > 0 && (
+          {attachedImages?.length > 0 && (
             <View style={styles.detailRow}>
               <View style={[flexDirectionRow, alignItemsCenter]}>
                 <Icon name="camera-outline" size={16} color={whiteColor} />
                 <View style={{ paddingHorizontal: spacings.large, flex: 1 }}>
                   <Text style={styles.detailLabel}>Attachments</Text>
                   <Text style={styles.detailValue}>
-                    {attachedImages.length} photo
-                    {attachedImages.length !== 1 ? 's' : ''} attached
+                    {attachedImages?.length} photo
+                    {attachedImages?.length !== 1 ? 's' : ''} attached
                   </Text>
                 </View>
               </View>
             </View>
           )}
-          {attachedImages.length > 0 && (
+          {attachedImages?.length > 0 && (
             <View style={styles.imagesContainer}>
               {attachedImages?.map(img => (
-                <View key={img.id} style={styles.imageWrapper}>
+                <View key={img?.id} style={styles.imageWrapper}>
                   <Image
-                    source={{ uri: img.uri }}
+                    source={{ uri: img?.uri }}
                     style={styles.imagePreview}
                   />
                 </View>
@@ -161,7 +161,7 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
                 <Icon name="settings-outline" size={16} color={whiteColor} />
                 <View style={{ paddingHorizontal: spacings.large }}>
                   <Text style={styles.detailLabel}>Equipment</Text>
-                  <Text style={styles.detailValue}>{equipmentData.model}</Text>
+                  <Text style={styles.detailValue}>{equipmentData?.model}</Text>
                 </View>
               </View>
             </View>
