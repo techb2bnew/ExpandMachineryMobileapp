@@ -48,10 +48,11 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
   const handleStartChat = () => {
     console.log('Start chat for ticket:', ticketNumber);
     navigation.navigate('SupportChat', {
-      ticketNumber, supportType,
-    equipmentData,
-    description,
-    attachedImages,
+      ticketNumber,
+      supportType,
+      equipmentData,
+      description,
+      attachedImages,
     });
   };
 

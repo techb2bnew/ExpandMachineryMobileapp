@@ -31,3 +31,19 @@ export const supportGreen = "#7ED321";
 export const supportPurple = "#9013FE";
 export const supportGold = "#F5A623";
 
+
+export default {
+  background: '#111',
+  cardBg: '#1C1C1C',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#B3B3B3',
+  accentGold: '#8C7E55',
+  red: '#FF4C4C',
+  green: '#00C896',
+  orange: '#FFAE42',
+  pink: '#FF5A8A',
+  border: '#333',
+  inputBg: '#3E3E3E',
+  statusGreen: '#2ECC71',
+  statusRed: '#E74C3C',
+};
