@@ -3,12 +3,18 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAv
 import { Toast } from '../components/CustomToast';
 import CustomTextInput from '../components/CustomTextInput';
 import CustomButton from '../components/CustomButton';
-import { grayColor, lightBlack, lightColor, whiteColor } from '../constans/Color';
+import { grayColor, lightBlack, lightColor, redColor, whiteColor } from '../constans/Color';
 import { BaseStyle } from '../constans/Style';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
 import { style, spacings } from '../constans/Fonts';
 import { APP_LOGO } from '../assests/images';
-import { ALREADY_HAVE_ACCOUNT, CREATE_ACCOUNT, JOIN_EXPAND, FULL_NAME, ENTER_YOUR_FULL_NAME, EMAIL_ADDRESS, ENTER_YOUR_EMAIL, PHONE_NUMBER, ENTER_YOUR_PHONE_NUMBER, ENTER_YOUR_PASSWORD, PASSWORD, CONFIRM_PASSWORD, CONFIRM_YOUR_PASSWORD, SIGN_IN } from '../constans/Constants';
+import { ALREADY_HAVE_ACCOUNT, CREATE_ACCOUNT, JOIN_EXPAND, FULL_NAME, ENTER_YOUR_FULL_NAME, EMAIL_ADDRESS, ENTER_YOUR_EMAIL, PHONE_NUMBER, ENTER_YOUR_PASSWORD, PASSWORD, CONFIRM_PASSWORD, CONFIRM_YOUR_PASSWORD, SIGN_IN, ENTER_YOUR_PHONE_NUMBER, API_ENDPOINTS } from '../constans/Constants';
+
+const isPhoneNumberPatternValid = (value) => /^\+?[0-9\s()\-]*$/.test(value.trim());
+
+const getDigitCount = (value) => value.replace(/\D/g, '').length;
+
+const normalizePhoneNumberForApi = (value) => value.replace(/\D/g, '').slice(0, 15);
 
 const CreateAccountScreen = ({ navigation }) => {
     const [fullName, setFullName] = useState('');
@@ -27,6 +33,7 @@ const CreateAccountScreen = ({ navigation }) => {
     const [phoneError, setPhoneError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [confirmPasswordError, setConfirmPasswordError] = useState('');
+    const [serverError, setServerError] = useState('');
 
     // Check if all fields are filled and passwords match
     const isFormComplete = fullName.trim() && email.trim() && phone.trim() && password.trim() && confirmPassword.trim();
@@ -55,15 +62,10 @@ const CreateAccountScreen = ({ navigation }) => {
             setPhoneError('Phone number is required');
             valid = false;
         } else {
-            // Remove all non-numeric characters
-            const cleanPhone = phone.replace(/\D/g, '');
-            
-            // Check for valid US phone number (10 digits)
-            if (cleanPhone.length !== 10) {
-                setPhoneError('Phone number must be 10 digits');
-                valid = false;
-            } else if (!/^[2-9]\d{2}[2-9]\d{2}\d{4}$/.test(cleanPhone)) {
-                setPhoneError('Enter a valid US phone number');
+            const digitCount = getDigitCount(phone);
+
+            if (!isPhoneNumberPatternValid(phone) || digitCount < 10 || digitCount > 15) {
+                setPhoneError('Enter a valid phone number');
                 valid = false;
             } else {
                 setPhoneError('');
@@ -99,20 +101,22 @@ const CreateAccountScreen = ({ navigation }) => {
         }
 
         setIsLoading(true);
+        setServerError('');
 
         try {
             const payload = {
                 name: fullName.trim(),
                 email: email.trim().toLowerCase(),
-                phoneNumber: phone.replace(/\D/g, ''), // Send only digits
+                phoneNumber: normalizePhoneNumberForApi(phone),
                 password: password.trim()
             };
 
             console.log('API Payload:', payload);
 
-            const response = await fetch('http://54.67.70.211/api/app/auth/register', {
+            const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/register`, {
                 method: 'POST',
                 headers: {
+                    'Accept': '*/*',
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(payload)
@@ -120,37 +124,22 @@ const CreateAccountScreen = ({ navigation }) => {
 
             const data = await response.json();
             console.log('API Response:', data);
+            console.log('Response Status:', response);
+
 
             if (response.ok) {
-                Toast.show({
-                    type: 'success',
-                    text1: 'Success',
-                    text2: 'Account created successfully!',
-                    visibilityTime: 3000,
-                    onPress: () => navigation.navigate('Login')
-                });
                 // Navigate to login after a short delay
-                setTimeout(() => {
-                    navigation.navigate('Login');
-                }, 1500);
+                navigation.navigate('Login');
             } else {
                 // Handle API errors
                 const errorMsg = data.message || data.error || 'Something went wrong. Please try again.';
-                Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: errorMsg,
-                    visibilityTime: 4000,
-                });
+                console.log('Server Error:', errorMsg);
+
+                setServerError(errorMsg);
             }
         } catch (error) {
             console.error('Registration Error:', error);
-            Toast.show({
-                type: 'error',
-                text1: 'Network Error',
-                text2: 'Please check your connection and try again.',
-                visibilityTime: 4000,
-            });
+            setServerError('Please check your connection and try again.');
         } finally {
             setIsLoading(false);
         }
@@ -204,31 +193,17 @@ const CreateAccountScreen = ({ navigation }) => {
 
                         <CustomTextInput
                             label={PHONE_NUMBER}
-                            placeholder="(555) 123-4567"
+                            placeholder={ENTER_YOUR_PHONE_NUMBER}
                             icon="call-outline"
                             value={phone}
                             onChangeText={(text) => {
-                                // Format phone number as user types
-                                const cleaned = text.replace(/\D/g, '');
-                                let formatted = '';
-                                
-                                if (cleaned.length >= 1) {
-                                    formatted = `(${cleaned.substring(0, 3)}`;
-                                }
-                                if (cleaned.length >= 4) {
-                                    formatted += `) ${cleaned.substring(3, 6)}`;
-                                }
-                                if (cleaned.length >= 7) {
-                                    formatted += `-${cleaned.substring(6, 10)}`;
-                                }
-                                
-                                setPhone(formatted);
+                                setPhone(text);
                                 setPhoneError('');
                             }}
                             required={true}
                             error={phoneError}
                             keyboardType="phone-pad"
-                            maxLength={14}
+                            maxLength={15}
                         />
 
                         <CustomTextInput
@@ -263,8 +238,12 @@ const CreateAccountScreen = ({ navigation }) => {
                             error={confirmPasswordError}
                         />
 
-                        <CustomButton 
-                            title={isLoading ? 'Creating Account...' : CREATE_ACCOUNT} 
+                        {serverError ? (
+                            <Text style={styles.serverErrorText}>{serverError}</Text>
+                        ) : null}
+
+                        <CustomButton
+                            title={isLoading ? 'Creating Account...' : CREATE_ACCOUNT}
                             onPress={handleCreateAccount}
                             disabled={!isFormComplete || isLoading}
                         />
@@ -331,6 +310,10 @@ const styles = StyleSheet.create({
     link: {
         color: whiteColor,
         fontWeight: style.fontWeightBold.fontWeight,
+    },
+    serverErrorText: {
+        color: redColor,
+        marginBottom: spacings.large,
     },
 });
 
