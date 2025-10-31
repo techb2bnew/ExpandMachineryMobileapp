@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import colors from '../constans/Color';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Feather from 'react-native-vector-icons/Feather';
 
-const CustomerDetailsScreen = ({ route }) => {
+const CustomerDetailsScreen = ({ navigation, route }) => {
   const customer = route?.params?.customer || {
     id: '#0003',
     name: 'John Smith',
@@ -19,8 +20,18 @@ const CustomerDetailsScreen = ({ route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Customer Details</Text>
-      <Text style={styles.subtitle}>View detail of customer</Text>
+      <View style={{ display: 'flex', flexDirection: 'row' }}>
+        <TouchableOpacity
+          style={{ marginBottom: 10 }}
+          onPress={() => navigation.goBack()}
+        >
+          <Feather name="chevron-left" size={25} color={colors.accentGold} />
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.title}>Customer Details</Text>
+          <Text style={styles.subtitle}>View detail of customer</Text>
+        </View>
+      </View>
 
       <Text style={styles.customerId}>{customer.id}</Text>
       <View style={styles.card}>

@@ -72,6 +72,7 @@ export default function BottomTabs() {
           'RequestSubmitted',
           'SupportChat',
           'TicketDetail',
+          'AgentChatScreen'
         ];
 
         return {

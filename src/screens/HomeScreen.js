@@ -250,7 +250,7 @@ const HomeScreen = ({ navigation }) => {
     setShowCat(false);
   };
 
-  const ActionDropdown = ({ itemId, onSelect }) => {
+  const ActionDropdown = ({ itemId, onSelect, show }) => {
     if (openActionFor !== itemId) return null;
 
     return (
@@ -265,50 +265,56 @@ const HomeScreen = ({ navigation }) => {
           elevation: 10,
           shadowColor: '#000',
           paddingVertical: 6,
-          zIndex: 20,
+          zIndex: 99999,
         }}
       >
         {/* View */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            onSelect('view');
-            setOpenActionFor(null);
-            navigation.navigate('CustomerDetails');
-          }}
-        >
-          <Text style={styles.menuText}>View</Text>
-        </TouchableOpacity>
+        {show && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onSelect('view');
+              setOpenActionFor(null);
+              navigation.navigate('CustomerDetails');
+            }}
+          >
+            <Text style={styles.menuText}>View</Text>
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.menuDivider} />
+        {show && <View style={styles.menuDivider} />}
 
         {/* Edit */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            onSelect('edit');
-            setOpenActionFor(null);
-            navigation.navigate('CustomerForm', {
-              type: 'edit',
-              customerData: onSelect,
-            });
-          }}
-        >
-          <Text style={styles.menuText}>Edit</Text>
-        </TouchableOpacity>
+        {show && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onSelect('edit');
+              setOpenActionFor(null);
+              navigation.navigate('CustomerForm', {
+                type: 'edit',
+                customerData: onSelect,
+              });
+            }}
+          >
+            <Text style={styles.menuText}>Edit</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.menuDivider} />
 
         {/* Delete */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            onSelect('delete');
-            setOpenActionFor(null);
-          }}
-        >
-          <Text style={[styles.menuText, { color: colors.red }]}>Delete</Text>
-        </TouchableOpacity>
+        {show && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onSelect('delete');
+              setOpenActionFor(null);
+            }}
+          >
+            <Text style={[styles.menuText, { color: colors.red }]}>Delete</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -376,10 +382,46 @@ const HomeScreen = ({ navigation }) => {
       <ActionDropdown
         itemId={item.id}
         onSelect={k => console.log('action:', k, item)}
+        show={true}
       />
     </View>
   );
+  const renderTicketRow = ({ item }) => (
+    <TouchableOpacity
+      style={[styles.row, { zIndex: 11 }]}
+      onPress={() => {
+        navigation.navigate('AgentChatScreen', { customer: item });
+      }}
+    >
+      {columns.map(col => (
+        <Text key={col.key} style={[styles.cell, { flex: col.flex }]}>
+          {item[col.key]}
+        </Text>
+      ))}
 
+      <TouchableOpacity
+        style={styles.actionBtn}
+        onPress={() => {
+          navigation.navigate('AgentChatScreen', { customer: item });
+        }}
+        // onPress={() =>
+        //   setOpenActionFor(openActionFor === item.id ? null : item.id)
+        // }
+      >
+        <Entypo
+          name="dots-three-vertical"
+          size={18}
+          color={colors.textPrimary}
+        />
+      </TouchableOpacity>
+
+      {/* Actions dropdown (white, black text) */}
+      {/* <ActionDropdown
+        itemId={item.id}
+        onSelect={k => console.log('action:', k, item)}
+      /> */}
+    </TouchableOpacity>
+  );
   return (
     <SafeAreaView style={styles.container}>
       {(openActionFor !== null || showStatus || showCat) && (
@@ -479,14 +521,23 @@ const HomeScreen = ({ navigation }) => {
           Actions
         </Text>
       </View>
-
-      <FlatList
-        data={data}
-        keyExtractor={it => String(it.id)}
-        renderItem={renderRow}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {activeTab === 'Tickets & Communication' ? (
+        <FlatList
+          data={data}
+          keyExtractor={it => String(it.id)}
+          renderItem={renderTicketRow}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={it => String(it.id)}
+          renderItem={renderRow}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       {/* Customer add button  */}
       {activeTab === 'Customer Management' && (
         <TouchableOpacity
