@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, FlatList, Platform } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, FlatList, Platform, ActivityIndicator } from 'react-native'
+import React, { useState, useCallback } from 'react'
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -8,13 +8,91 @@ import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightPinkAccent, 
 import { style, spacings } from '../constans/Fonts'
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
 import { BaseStyle } from '../constans/Style'
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_ENDPOINTS } from '../constans/Constants'
 const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
+
+const formatDisplayName = (value) => {
+  if (!value || typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed.length) {
+    return '';
+  }
+
+  return trimmed
+    .split(/\s+/)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
 
 const AccountScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({});
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [profileData, setProfileData] = useState(null)
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      setProfileLoading(true);
+      setProfileError('');
+
+      const token = await AsyncStorage.getItem('userToken');
+
+      if (!token) {
+        setProfileError('Authentication token not found. Please log in again.');
+        setProfileData(null);
+        return;
+      }
+
+      const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      console.log('Profile API Response:', data);
+
+      if (response.ok) {
+        const customer = data?.data?.customer || data?.customer || data?.data || data;
+        setProfileData(customer);
+        await AsyncStorage.setItem('userData', JSON.stringify(customer));
+      } else {
+        const errorMsg = data?.message || data?.error || 'Unable to fetch profile at the moment.';
+        setProfileError(errorMsg);
+        setProfileData(null);
+      }
+    } catch (error) {
+      console.log('Profile fetch error:', error);
+      setProfileError('Unable to load profile. Please check your connection.');
+      setProfileData(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile()
+    }, [fetchProfile])
+  )
+
+  const rawDisplayName = profileData?.name || profileData?.fullName || 'John Smith'
+  const displayName = formatDisplayName(rawDisplayName) || 'John Smith'
+  // const totalTickets = profileData ? (profileData?.totalSupportTickets ?? profileData?.totalTickets ?? 12) : 12
+  // const membershipDuration = profileData
+  //   ? calculateMembershipDuration(profileData?.memberSince, profileData?.createdAt)
+  //   : { value: 3, label: 'Years' }
+  // const customerStatus = profileData?.status
 
   const accountOptions = [
     {
@@ -74,19 +152,42 @@ const AccountScreen = ({ navigation }) => {
       iconName: 'trash-outline',
       onConfirm: async () => {
         try {
-          // Here you would typically call your API to delete the account
-          // For now, we'll just clear the local data and logout
-          console.log('Account deletion request sent to server');
+          setModalVisible(false);
 
-          // Clear user token and data from AsyncStorage
-          await AsyncStorage.removeItem('userToken');
-          await AsyncStorage.removeItem('userData');
-          console.log('Account deleted and user logged out');
-          setModalVisible(false);
-          // The AppNavigator will automatically detect the token removal and redirect to login
+          const token = await AsyncStorage.getItem('userToken');
+
+          if (!token) {
+            console.log('Delete Account Token Error:', token);
+            return;
+          }
+
+          const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile/delete-account`, {
+            method: 'DELETE',
+            headers: {
+              Accept: 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const data = await response.json();
+          console.log('Delete Account Response:', data);
+
+          if (response.ok) {
+            await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              })
+            );
+            setModalVisible(false);
+          } else {
+            const errorMsg = data?.message || data?.error || 'Unable to delete account. Please try again.';
+            console.log('Delete Account Response Error:', errorMsg);
+
+          }
         } catch (error) {
-          console.log('Delete account error:', error);
-          setModalVisible(false);
+          console.log('Delete Account Error:', error);
         }
       }
     });
@@ -103,11 +204,29 @@ const AccountScreen = ({ navigation }) => {
       iconName: 'log-out-outline',
       onConfirm: async () => {
         try {
-          // Clear user token from AsyncStorage
-          await AsyncStorage.removeItem('userToken');
-          // Clear any other user data if needed
-          await AsyncStorage.removeItem('userData');
-          console.log('User signed out successfully')
+          const token = await AsyncStorage.getItem('userToken');
+
+          if (token) {
+            try {
+              const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/logout`, {
+                method: 'POST',
+                headers: {
+                  Accept: 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              const responseBody = await response.json().catch(() => null);
+              console.log('Logout API Response:', responseBody);
+            } catch (apiError) {
+              console.log('Logout API Error:', apiError);
+            }
+          } else {
+            console.log('Logout skipped: token not found.');
+          }
+
+          await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
+          console.log('User signed out successfully');
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
@@ -156,6 +275,7 @@ const AccountScreen = ({ navigation }) => {
           <Text style={styles.headerSubtitle}>Manage your account settings</Text>
         </View>
 
+
         {/* User Profile Card */}
         <View style={[styles.profileCard, alignItemsCenter]}>
           <View style={styles.avatarContainer}>
@@ -163,23 +283,29 @@ const AccountScreen = ({ navigation }) => {
               <Feather name="user" size={40} color={whiteColor} />
             </View>
           </View>
-          <Text style={styles.userName}>John Smith</Text>
-          <Text style={styles.membershipStatus}>Premium Member</Text>
 
-          <View style={[styles.statsContainer, flexDirectionRow, justifyContentSpaceBetween]}>
-            <View style={[alignItemsCenter]}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Tickets</Text>
-            </View>
-            <View style={[alignItemsCenter]}>
-              <Text style={styles.statNumber}>3</Text>
-              <Text style={styles.statLabel}>Years</Text>
-            </View>
-            <View style={[alignItemsCenter]}>
-              <Text style={styles.statNumber}>5</Text>
-              <Text style={styles.statLabel}>Machines</Text>
-            </View>
-          </View>
+          {profileLoading ? (
+            <ActivityIndicator size="small" color={whiteColor} />
+          ) : (
+            <>
+              <Text style={styles.userName}>{displayName}</Text>
+
+              {/* <View style={[styles.statsContainer, flexDirectionRow, justifyContentSpaceBetween]}>
+                <View style={[alignItemsCenter]}>
+                  <Text style={styles.statNumber}>{totalTickets}</Text>
+                  <Text style={styles.statLabel}>Tickets</Text>
+                </View>
+                <View style={[alignItemsCenter]}>
+                  <Text style={styles.statNumber}>{membershipDuration.value}</Text>
+                  <Text style={styles.statLabel}>{membershipDuration.label}</Text>
+                </View>
+                <View style={[alignItemsCenter]}>
+                  <Text style={styles.statNumber}>{formatDisplayName(customerStatus)}</Text>
+                  <Text style={styles.statLabel}>Status</Text>
+                </View>
+              </View> */}
+            </>
+          )}
         </View>
 
         {/* Account Options */}
@@ -271,7 +397,7 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     ...style.fontSizeLarge1x,
-    ...style.fontWeightBold,
+    ...style.fontWeightThin1x,
     color: whiteColor,
     marginBottom: spacings.xsmall,
   },

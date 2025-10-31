@@ -35,6 +35,7 @@ import {
   SIGN_IN,
   DONT_HAVE_ACCOUNT,
   CREATE_ACCOUNT,
+  API_ENDPOINTS,
 } from '../constans/Constants';
 import { APP_LOGO } from '../assests/images';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,6 +48,7 @@ const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false); // ✅ New state
+  const [serverError, setServerError] = useState('');
 
   // Error states
   const [emailError, setEmailError] = useState('');
@@ -81,84 +83,6 @@ const LoginScreen = ({ navigation }) => {
     return valid;
   };
 
-  // const handleLogin = async () => {
-  //   if (!validateForm()) {
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-
-  //   try {
-  //     const payload = {
-  //       email: email.trim().toLowerCase(),
-  //       password: password.trim(),
-  //     };
-
-  //     console.log('Login API Payload:', payload);
-
-  //     const response = await fetch('http://54.67.70.211/api/app/auth/login', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(payload),
-  //     });
-
-  //     const data = await response.json();
-  //     console.log('Login API Response:', data);
-
-  //     if (response.ok) {
-  //       // Save token and email in AsyncStorage
-  //       if (data.token) {
-  //         await AsyncStorage.setItem('userToken', data.token);
-  //         await AsyncStorage.setItem('userEmail', email);
-  //       } else {
-  //         // If no token in response, save a default one
-  //         await AsyncStorage.setItem('userToken', 'user-login-token');
-  //         await AsyncStorage.setItem('userEmail', email);
-  //       }
-
-  //       Toast.show({
-  //         type: 'success',
-  //         text1: 'Login Successful',
-  //         text2: 'Welcome back!',
-  //         visibilityTime: 3000,
-  //       });
-
-  //       // Navigate to main app
-  //       setTimeout(() => {
-  //         navigation.reset({
-  //           index: 0,
-  //           routes: [{ name: 'Tabs' }],
-  //         });
-  //       }, 1500);
-  //     } else {
-  //       // Handle API errors
-  //       const errorMsg =
-  //         data.message ||
-  //         data.error ||
-  //         'Login failed. Please check your credentials.';
-  //       Toast.show({
-  //         type: 'error',
-  //         text1: 'Login Failed',
-  //         text2: errorMsg,
-  //         visibilityTime: 4000,
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error('Login Error:', error);
-  //     Toast.show({
-  //       type: 'error',
-  //       text1: 'Network Error',
-  //       text2: 'Please check your connection and try again.',
-  //       visibilityTime: 4000,
-  //     });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-
 
   const handleLogin = async () => {
     if (!validateForm()) {
@@ -166,6 +90,7 @@ const LoginScreen = ({ navigation }) => {
     }
 
     setIsLoading(true);
+    setServerError('');
 
     try {
       const payload = {
@@ -175,68 +100,44 @@ const LoginScreen = ({ navigation }) => {
 
       console.log('Login API Payload:', payload);
 
-      // const response = await fetch('http://54.67.70.211/api/app/auth/login', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(payload),
-      // });
-
-      // const data = await response.json();
-      // console.log('Login API Response:', data);
-
-      await AsyncStorage.setItem('userToken',email);
-      // if (response.ok) {
-      //   // Save token and email in AsyncStorage
-      //   if (data.token) {
-      //     await AsyncStorage.setItem('userEmail', email);
-      //   } else {
-      //     // If no token in response, save a default one
-      //     await AsyncStorage.setItem('userToken', 'user-login-token');
-      //     await AsyncStorage.setItem('userEmail', email);
-      //   }
-
-        Toast.show({
-          type: 'success',
-          text1: 'Login Successful',
-          text2: 'Welcome back!',
-          visibilityTime: 3000,
-        });
-
-        // Navigate to main app
-        setTimeout(() => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Tabs' }],
-          });
-        }, 1500);
-      }
-      //  else {
-      //   // Handle API errors
-      //   const errorMsg =
-      //     data.message ||
-      //     data.error ||
-      //     'Login failed. Please check your credentials.';
-      //   Toast.show({
-      //     type: 'error',
-      //     text1: 'Login Failed',
-      //     text2: errorMsg,
-      //     visibilityTime: 4000,
-      //   });
-      // }
-     catch (error) {
-      console.error('Login Error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Network Error',
-        text2: 'Please check your connection and try again.',
-        visibilityTime: 4000,
+      const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/login`, {
+        method: 'POST',
+        headers: {
+          Accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
+
+      const data = await response.json();
+      console.log('Login API Response:', data);
+
+      if (response?.ok) {
+        if (data?.data?.token) {
+          await AsyncStorage.setItem('userToken', data?.data?.token);
+        }
+        await AsyncStorage.setItem('userData', JSON.stringify(data?.data?.customer));
+        await AsyncStorage.setItem('userRole', JSON.stringify(data?.data?.customer?.role));
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Tabs' }],
+        });
+      } else {
+        const errorMsg =
+          data.message ||
+          data.error ||
+          'Login failed. Please check your credentials.';
+        setServerError(errorMsg);
+      }
+    } catch (error) {
+      console.error('Login Error:', error);
+      setServerError('Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
   return (
     <KeyboardAvoidingView
       style={[flex, { backgroundColor: lightColor }]}
@@ -298,6 +199,10 @@ const LoginScreen = ({ navigation }) => {
             />
             <Text style={styles.checkboxText}>Stay signed In</Text>
           </TouchableOpacity> */}
+
+          {serverError ? (
+            <Text style={styles.errorText}>{serverError}</Text>
+          ) : null}
 
           <CustomButton
             title={SIGN_IN}
@@ -364,6 +269,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: whiteColor,
     fontSize: 16,
+  },
+  errorText: {
+    color: redColor,
   },
 });
 
