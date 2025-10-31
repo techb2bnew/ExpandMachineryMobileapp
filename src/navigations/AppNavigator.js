@@ -15,7 +15,13 @@ const { flex, alignJustifyCenter } = BaseStyle;
 const LoadingScreen = () => (
   <View style={[flex, alignJustifyCenter, { backgroundColor: '#2F2F2F' }]}>
     <ActivityIndicator size="large" color={whiteColor} />
-    <Text style={{ color: whiteColor, marginTop: spacings.large, fontSize: style.fontSizeNormal.fontSize }}>
+    <Text
+      style={{
+        color: whiteColor,
+        marginTop: spacings.large,
+        fontSize: style.fontSizeNormal.fontSize,
+      }}
+    >
       Loading...
     </Text>
   </View>
@@ -27,10 +33,10 @@ const AppNavigator = () => {
 
   useEffect(() => {
     checkAuthStatus();
-    
+
     // Listen for storage changes to update auth state
     const interval = setInterval(checkAuthStatus, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -66,7 +72,8 @@ const AppNavigator = () => {
           border: grayColor,
           notification: '#FF6B6B',
         },
-      }}>
+      }}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <Stack.Screen name="MainStack" component={MainStack} />

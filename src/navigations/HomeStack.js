@@ -7,9 +7,8 @@ import RequestSubmittedScreen from '../screens/RequestSubmittedScreen';
 import SupportChatScreen from '../screens/SupportChatScreen';
 import CustomerFormScreen from '../screens/CustomerFormScreen';
 import CustomerDetailsScreen from '../screens/CustomerDetailsScreen';
+import AgentChatScreen from '../screens/AgentChatScreen';
 import AuthStack from './AuthStack';
-
-
 
 const Stack = createNativeStackNavigator();
 
