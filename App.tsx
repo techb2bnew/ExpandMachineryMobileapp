@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState<string | null>(null);
+console.log("userTokenuserToken>>>",userToken);
 
   useEffect(() => {
     const bootstrap = async () => {

@@ -43,10 +43,10 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
   const { supportType } = route.params || {
     supportType: 'Applications Support',
   };
-// React.useEffect(() => {
-//   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
-//   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
-// }, [navigation]);
+  // React.useEffect(() => {
+  //   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
+  //   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
+  // }, [navigation]);
   const [searchText, setSearchText] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
@@ -98,9 +98,12 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-     behavior={Platform.OS === 'ios' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'height' : undefined}
     >
-      <SafeAreaView  edges={['top']} style={{ flex: 1, backgroundColor: lightColor }}>
+      <SafeAreaView
+        edges={['top']}
+        style={{ flex: 1, backgroundColor: lightColor }}
+      >
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
