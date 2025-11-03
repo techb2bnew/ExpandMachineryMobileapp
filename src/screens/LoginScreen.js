@@ -171,6 +171,7 @@ const LoginScreen = ({ navigation }) => {
             error={emailError}
             autoCapitalize="none"
             keyboardType="email-address"
+            required={true}
           />
 
           {/* Password */}
@@ -185,6 +186,7 @@ const LoginScreen = ({ navigation }) => {
               setPassword(text);
               setPasswordError('');
             }}
+            required={true}
             onRightIconPress={() => setShowPassword(!showPassword)}
             error={passwordError}
           />

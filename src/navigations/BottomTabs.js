@@ -72,6 +72,7 @@ export default function BottomTabs() {
           'RequestSubmitted',
           'SupportChat',
           'TicketDetail',
+          'Auth',
         ];
 
         return {
@@ -143,7 +144,7 @@ export default function BottomTabs() {
           },
         })}
       />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="NotificationsTab"
         component={NotificationsStack}
         listeners={({ navigation }) => ({
@@ -153,7 +154,7 @@ export default function BottomTabs() {
             });
           },
         })}
-      />
+      /> */}
       <Tab.Screen
         name="AccountTab"
         component={AccountStack}

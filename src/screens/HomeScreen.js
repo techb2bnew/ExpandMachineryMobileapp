@@ -1,62 +1,113 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, FlatList, Image, StatusBar } from 'react-native'
-import React from 'react'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, FlatList, Image, StatusBar, ActivityIndicator } from 'react-native'
+import React, { useState, useEffect, useCallback } from 'react'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import Feather from 'react-native-vector-icons/Feather'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { darkgrayColor, whiteColor, supportBlue, supportGreen, supportPurple, supportGold, grayColor, lightColor, lightBlack } from '../constans/Color'
 import { style, spacings } from '../constans/Fonts'
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp, fetchWithAuth } from '../utils';
 import { INSIDE_COMPANY_LOGO } from '../assests/images'
 import { BaseStyle } from '../constans/Style'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { API_ENDPOINTS } from '../constans/Constants'
 const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter } = BaseStyle;
 
+// Mapping configuration for icons and colors based on category name
+const categoryConfig = {
+  'Applications Support': {
+    icon: 'code-slash',
+    iconColor: supportBlue,
+    iconType: Ionicons,
+    order: 1
+  },
+  'Service Support': {
+    icon: 'tool',
+    iconColor: supportGreen,
+    iconType: Feather,
+    order: 2
+  },
+  'Parts Support': {
+    icon: 'cube-outline',
+    iconColor: supportPurple,
+    iconType: Ionicons,
+    order: 3
+  },
+  'Sales Support': {
+    icon: 'dollar-sign',
+    iconColor: supportGold,
+    iconType: Feather,
+    order: 4
+  },
+}
+
 const HomeScreen = ({ navigation }) => {
-  const supportCategories = [
-    {
-      id: 1,
-      title: 'Applications Support',
-      description: 'Programming related questions',
-      icon: 'code-slash',
-      iconColor: supportBlue,
-      iconType: Ionicons
-    },
-    {
-      id: 2,
-      title: 'Service Support',
-      description: 'Fixing your machine',
-      icon: 'tool',
-      iconColor: supportGreen,
-      iconType: Feather
-    },
-    {
-      id: 3,
-      title: 'Parts Support',
-      description: 'Pricing for Spare Parts',
-      icon: 'cube-outline',
-      iconColor: supportPurple,
-      iconType: Ionicons
-    },
-    {
-      id: 4,
-      title: 'Sales Support',
-      description: 'Pricing on options or a new machine',
-      icon: 'dollar-sign',
-      iconColor: supportGold,
-      iconType: Feather
-    },
-  ]
+  const [supportCategories, setSupportCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true)
+
+      // Using fetchWithAuth - automatically handles token and auth errors
+      const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/categories`, {
+        method: 'GET',
+      })
+
+      const data = await response.json()
+      console.log('Categories API Response:', data)
+
+      if (response.ok && data?.success && data?.data) {
+        // Transform API data to match the structure
+        const transformedCategories = data.data.map((category) => {
+          const config = categoryConfig[category.name] || {
+            icon: 'help-circle-outline',
+            iconColor: grayColor,
+            iconType: Ionicons,
+            order: 999
+          }
+
+          return {
+            id: category.id,
+            title: category.name,
+            description: category.description,
+            icon: config.icon,
+            iconColor: config.iconColor,
+            iconType: config.iconType,
+            order: config.order
+          }
+        })
+
+        // Sort by order: Applications Support (1), Service Support (2), Parts Support (3), Sales Support (4)
+        transformedCategories.sort((a, b) => a.order - b.order)
+
+        setSupportCategories(transformedCategories)
+      } else {
+        console.log('Failed to fetch categories')
+      }
+    } catch (error) {
+      console.log('Categories fetch error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCategories()
+  }, [fetchCategories])
 
   const handleSupportPress = (category) => {
     console.log('Support category pressed:', category.title)
-    // First 3 cards go to Select Equipment screen
-    if (category.id <= 3) {
+    // First 3 cards (Applications, Service, Parts) go to Select Equipment screen
+    if (category.order <= 3) {
       navigation.navigate('SelectEquipment', {
-        supportType: category.title
+        supportType: category.title,
+        categoryId: category.id
       });
     } else {
       // 4th card (Sales Support) goes to Issue Description directly
       navigation.navigate('IssueDescription', {
         supportType: category.title,
+        categoryId: category.id,
         equipmentData: null // No equipment needed for sales support
       });
     }
@@ -74,26 +125,32 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.categoriesContainer}>
-          <FlatList
-            data={supportCategories}
-            keyExtractor={(item) => item.id.toString()}
-            horizontal={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.categoryCard, flexDirectionRow, alignItemsCenter, { borderColor: item.iconColor, borderWidth: 0.5 }]}
-                onPress={() => handleSupportPress(item)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: item.iconColor + '13' }, alignJustifyCenter]}>
-                  <item.iconType name={item.icon} size={24} color={item.iconColor} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={styles.categoryTitle}>{item.title}</Text>
-                  <Text style={styles.categoryDescription}>{item.description}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
+          {loading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: hp(10) }}>
+              <ActivityIndicator size="large" color={whiteColor} />
+            </View>
+          ) : (
+            <FlatList
+              data={supportCategories}
+              keyExtractor={(item) => item.id.toString()}
+              horizontal={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.categoryCard, flexDirectionRow, alignItemsCenter, { borderColor: item.iconColor + "90", borderWidth: 0.5}]}
+                  onPress={() => handleSupportPress(item)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.iconContainer, { backgroundColor: item.iconColor + '13' }, alignJustifyCenter]}>
+                    <item.iconType name={item.icon} size={24} color={item.iconColor} />
+                  </View>
+                  <View style={styles.textContainer}>
+                    <Text style={styles.categoryTitle}>{item.title}</Text>
+                    <Text style={styles.categoryDescription}>{item.description}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -129,7 +186,8 @@ const styles = StyleSheet.create({
   },
   categoriesContainer: {
     padding: spacings.large,
-    paddingVertical: spacings.xxLarge
+    paddingVertical: spacings.xxLarge,
+    marginBottom: hp(10)
   },
   categoryCard: {
     backgroundColor: lightBlack,

@@ -633,6 +633,9 @@ import {
   Animated,
   LayoutAnimation,
   UIManager,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -640,6 +643,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 import {
   darkgrayColor,
@@ -655,8 +659,10 @@ import { style, spacings } from '../constans/Fonts';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
+  fetchWithAuth,
 } from '../utils';
 import { BaseStyle } from '../constans/Style';
+import { API_ENDPOINTS } from '../constans/Constants';
 
 const {
   alignJustifyCenter,
@@ -694,124 +700,27 @@ const InboxScreen = ({ navigation }) => {
   const [ticket, setTicket] = useState(null);
 
   // ---- DATA IN STATE (archiving needs state) ----
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      title: 'CNC calibration issue',
-      sender: 'Support Team',
-      message:
-        'Our technician visited and replaced the linear encoders. The system has been recalibrate...',
-      timestamp: '2 hours ago',
-      isUnread: false,
-      iconColor: 'transparent',
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      status: 'Resolved',
-      isArchived: false,
-    },
-    {
-      id: 2,
-      title: 'Software license activation',
-      sender: 'Support Team',
-      message:
-        "Let me check the license key in our system. I'll get back to you within 24...",
-      timestamp: '1 day ago',
-      isUnread: true,
-      status: 'In Progress',
-      iconColor: lightPinkAccent,
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      isArchived: false,
-    },
-    {
-      id: 3,
-      title: 'Replacement spindle bearing',
-      sender: 'Support Team',
-      message:
-        "We've received your parts request and are preparing a quote. You should receive it by...",
-      timestamp: '3 days ago',
-      isUnread: false,
-      status: 'Resolved',
-      iconColor: 'transparent',
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      isArchived: false,
-    },
-    {
-      id: 4,
-      title: 'Maintenance schedule query',
-      sender: 'Support Team',
-      message:
-        'Thank you for the detailed maintenance schedule. This will help us plan our...',
-      timestamp: '1 week ago',
-      isUnread: false,
-      status: 'Resolved',
-      iconColor: 'transparent',
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      isArchived: false,
-    },
-    {
-      id: 5,
-      title: 'CNC calibration issue',
-      sender: 'Support Team',
-      message:
-        'Our technician visited and replaced the linear encoders. The system has been recalibrate...',
-      timestamp: '2 hours ago',
-      isUnread: false,
-      status: 'Resolved',
-      iconColor: 'transparent',
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      isArchived: false,
-    },
-    {
-      id: 6,
-      title: 'Software license activation',
-      sender: 'Support Team',
-      message:
-        "Let me check the license key in our system. I'll get back to you within 24...",
-      timestamp: '1 day ago',
-      isUnread: true,
-      status: 'In Progress',
-      iconColor: lightPinkAccent,
-      machine: 'Genturn 2540',
-      serial: 'GT2540-2023-015',
-      category: 'Applications Support',
-      createdDate: '18/01/2024',
-      description: 'Unable to activate new CAM software license',
-      isArchived: false,
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ticketDetails, setTicketDetails] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // ---- BADGE COUNTS DYNAMIC ----
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const unreadCount = activeTab === 'Archived' ? 0 : messages.filter(m => m.isUnread).length;
+    return [
       { id: 'All', label: 'All' },
       {
         id: 'Unread',
         label: 'Unread',
-        badge: messages.filter(m => m.isUnread && !m.isArchived).length,
+        badge: unreadCount,
       },
       { id: 'Archived', label: 'Archived' },
-    ],
-    [messages],
-  );
+    ];
+  }, [messages, activeTab]);
 
   const emptyMessages = {
     All: {
@@ -832,49 +741,226 @@ const InboxScreen = ({ navigation }) => {
   };
 
   const getStatusColor = status => {
-    switch (status) {
-      case 'Resolved':
+    const statusLower = (status || '').toLowerCase();
+    
+    switch (statusLower) {
+      case 'pending':
         return greenColor;
-      case 'In Progress':
-        return '#FFA500';
-      case 'Open':
-        return lightPinkAccent;
+      case 'resolved':
+        return greenColor;
+      case 'cancel':
+      case 'cancelled':
+        return redColor;
       default:
-        return grayColor;
+        // Other statuses (In Progress, Open, etc.) → yellow/gold
+        return '#FFA500'; // Orange/Yellow
     }
   };
 
   // ---- ARCHIVE / UNARCHIVE with smooth layout ----
-  const handleArchive = id => {
-    LayoutAnimation.configureNext(SmoothEase);
-    setMessages(prev =>
-      prev.map(m =>
-        m.id === id ? { ...m, isArchived: true, isUnread: false } : m,
-      ),
-    );
+  const handleArchive = async (ticketId) => {
+    if (!ticketId) return;
+
+    try {
+      // Call API to toggle archive status
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${ticketId}/toggle-archive`;
+      const response = await fetchWithAuth(url, {
+        method: 'PUT',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data?.success) {
+        // Update local state - remove from current list (it will move to archived tab)
+        LayoutAnimation.configureNext(SmoothEase);
+        setMessages(prev => prev.filter(m => m.ticketId !== ticketId));
+
+        // Refresh current tab to get updated data
+        loadInbox(true, false);
+      } else {
+        console.log('Failed to archive ticket:', data?.message || 'Unknown error');
+      }
+    } catch (error) {
+      console.log('Archive ticket error:', error);
+    }
   };
 
-  const handleUnarchive = id => {
-    LayoutAnimation.configureNext(SmoothEase);
-    setMessages(prev =>
-      prev.map(m => (m.id === id ? { ...m, isArchived: false } : m)),
-    );
-  };
+  // UNARCHIVE - Commented out for now, but keeping for future use
+  // const handleUnarchive = async (ticketId) => {
+  //   if (!ticketId) return;
+  //   
+  //   try {
+  //     // Call API to toggle archive status (unarchive)
+  //     const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${ticketId}/toggle-archive`;
+  //     const response = await fetchWithAuth(url, {
+  //       method: 'PUT',
+  //     });
+  //     
+  //     const data = await response.json();
+  //     
+  //     if (response.ok && data?.success) {
+  //       // Update local state - remove from archived list
+  //       LayoutAnimation.configureNext(SmoothEase);
+  //       setMessages(prev => prev.filter(m => m.ticketId !== ticketId));
+  //       
+  //       // Refresh current tab to get updated data
+  //       loadInbox(true, false);
+  //     } else {
+  //       console.log('Failed to unarchive ticket:', data?.message || 'Unknown error');
+  //     }
+  //   } catch (error) {
+  //     console.log('Unarchive ticket error:', error);
+  //   }
+  // };
 
   // ---- FILTERS ----
   const filteredMessages = useMemo(() => {
-    return messages
-      .filter(msg => {
-        if (activeTab === 'Unread') return msg.isUnread && !msg.isArchived;
-        if (activeTab === 'Archived') return msg.isArchived;
-        return !msg.isArchived; // All: archived hidden
-      })
-      .filter(
-        msg =>
-          msg.title.toLowerCase().includes(searchText.toLowerCase()) ||
-          msg.message.toLowerCase().includes(searchText.toLowerCase()),
-      );
-  }, [messages, activeTab, searchText]);
+    // Server-side filtering + search; keep client filtering minimal for safety
+    return messages;
+  }, [messages]);
+
+  const buildQuery = (resetPage = false) => {
+    const q = new URLSearchParams();
+    q.set('page', String(resetPage ? 1 : page));
+    q.set('limit', '10');
+    const filter = activeTab.toLowerCase(); // all | unread | archived
+    q.set('filter', filter);
+    if (searchText && searchText.trim().length > 0) {
+      q.set('search', searchText.trim());
+    }
+    return q.toString();
+  };
+
+  const mapConversations = (items = []) => {
+    return items.map((c) => {
+      const isUnread = c?.isRead === false;
+      // Basic timestamp formatting (fallback to empty)
+      const ts = c?.lastMessageTime || null;
+      return {
+        id: c?._id || String(Math.random()),
+        ticketId: c?._id,
+        title: c?.ticketNumber ? `Ticket ${c.ticketNumber}` : (c?.ticketNumber || 'Ticket'),
+        sender: 'Expand Support Team',
+        message: c?.description || '',
+        timestamp: ts ? '' : '',
+        isUnread,
+        iconColor: isUnread ? lightPinkAccent : 'transparent',
+        status: c?.status || 'pending',
+      };
+    });
+  };
+
+  // Format date from ISO string
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch (error) {
+      return '';
+    }
+  };
+
+  // Fetch ticket details
+  const fetchTicketDetails = async (ticketId) => {
+    if (!ticketId || isLoadingDetails) return;
+
+    try {
+      setIsLoadingDetails(true);
+      setTicketDetails(null);
+
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${ticketId}/details?page=1&limit=20`;
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      const data = await response.json();
+
+      if (response.ok && data?.success && data?.data?.ticket) {
+        const ticketData = data.data.ticket;
+        console.log('ticketData', ticketData);
+        console.log('Setting ticketDetails state...');
+        setTicketDetails(ticketData);
+        console.log('ticketDetails state set');
+      } else {
+        console.log('Failed to fetch ticket details:', {
+          ok: response.ok,
+          success: data?.success,
+          hasTicket: !!data?.data?.ticket,
+          data,
+        });
+      }
+    } catch (error) {
+      console.log('Ticket details fetch error:', error);
+    } finally {
+      console.log('Setting isLoadingDetails to false');
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const loadInbox = async (reset = false, showFullRefresh = false) => {
+    // Don't block if already loading (for pagination)
+    if (isLoading && !reset) return;
+
+    try {
+      // Full refresh only for pull-to-refresh
+      if (reset && showFullRefresh) {
+        setIsRefreshing(true);
+      } else if (reset) {
+        // Tab change: soft loading, keep existing data visible
+        setIsLoading(true);
+      } else {
+        // Pagination: normal loading
+        setIsLoading(true);
+      }
+
+      const qs = buildQuery(reset);
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox?${qs}`;
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      const data = await response.json();
+
+      if (response.ok && data?.success) {
+        const conv = data?.data?.conversations || [];
+        const pagination = data?.data?.pagination || {};
+        const nextItems = mapConversations(conv);
+
+        if (reset) {
+          setMessages(nextItems);
+          setPage(1);
+        } else {
+          setMessages(prev => [...prev, ...nextItems]);
+        }
+        setTotalPages(pagination?.totalPages || 1);
+      } else {
+        // non-ok handled by fetchWithAuth for auth errors; otherwise no-op
+      }
+    } catch (e) {
+      // network or parse error
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    // When tab or search changes, soft refresh (background loading, keep existing data visible)
+    loadInbox(true, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, searchText]);
+
+  const handleEndReached = () => {
+    if (isLoading) return;
+    if (page >= totalPages) return;
+    setPage(prev => prev + 1);
+  };
+
+  useEffect(() => {
+    if (page > 1) {
+      loadInbox(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // ---- Animated right actions (Archive/Unarchive) ----
   const renderRightActions = (dragX, isArchivedTab) => {
@@ -910,18 +996,59 @@ const InboxScreen = ({ navigation }) => {
 
   const renderMessageItem = ({ item }) => {
     const isArchivedTab = activeTab === 'Archived';
+
+    // Disable swipe for archived tab
+    if (isArchivedTab) {
+      return (
+        <TouchableOpacity
+          style={styles.messageCard}
+          activeOpacity={0.9}
+          // onPress={() => {
+          //   setTicket(item);
+          //   setShowTicketModal(true);
+          //   // Fetch ticket details when modal opens
+          //   if (item.ticketId) {
+          //     fetchTicketDetails(item.ticketId);
+          //   }
+          // }}
+        >
+          <View style={styles.messageContent}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: item.iconColor },
+              ]}
+            >
+              <MaterialIcons name="message" size={20} color={whiteColor} />
+            </View>
+            <View style={styles.messageTextContainer}>
+              <Text style={styles.messageTitle}>{item.title}</Text>
+              <Text style={styles.messageSender}> Expand Support Team</Text>
+              <Text style={styles.messagePreview} numberOfLines={2}>
+                {item.message}
+              </Text>
+            </View>
+            <View style={styles.messageMeta}>
+              <Text style={styles.timestamp}>{item.timestamp}</Text>
+              {/* {item.isUnread && <View style={styles.unreadDot} />} */}
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Enable swipe only for non-archived tabs
     return (
       <Swipeable
         overshootRight={false}
         friction={1.15} // smoother/controlled
         rightThreshold={36} // quick trigger
         renderRightActions={(progress, dragX) =>
-          renderRightActions(dragX, isArchivedTab)
+          renderRightActions(dragX, false)
         }
         onSwipeableOpen={direction => {
           if (direction === 'right') {
-            if (isArchivedTab) handleUnarchive(item.id);
-            else handleArchive(item.id);
+            handleArchive(item.ticketId || item.id);
           }
         }}
       >
@@ -929,8 +1056,12 @@ const InboxScreen = ({ navigation }) => {
           style={styles.messageCard}
           activeOpacity={0.9}
           onPress={() => {
-            setShowTicketModal(true);
             setTicket(item);
+            setShowTicketModal(true);
+            // Fetch ticket details when modal opens
+            if (item.ticketId) {
+              fetchTicketDetails(item.ticketId);
+            }
           }}
         >
           <View style={styles.messageContent}>
@@ -940,11 +1071,11 @@ const InboxScreen = ({ navigation }) => {
                 { backgroundColor: item.iconColor },
               ]}
             >
-              <Icon name="settings-outline" size={20} color={whiteColor} />
+              <MaterialIcons name="message" size={20} color={whiteColor} />
             </View>
             <View style={styles.messageTextContainer}>
               <Text style={styles.messageTitle}>{item.title}</Text>
-              <Text style={styles.messageSender}>{item.sender}</Text>
+              <Text style={styles.messageSender}> Expand Support Team</Text>
               <Text style={styles.messagePreview} numberOfLines={2}>
                 {item.message}
               </Text>
@@ -1029,14 +1160,29 @@ const InboxScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Messages List */}
-        {filteredMessages.length > 0 ? (
+        {/* Initial Loading (first load) */}
+        {isLoading && filteredMessages.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={whiteColor} />
+          </View>
+        ) : filteredMessages.length > 0 ? (
           <FlatList
             data={filteredMessages}
             renderItem={renderMessageItem}
             keyExtractor={item => String(item.id)}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
+            onEndReachedThreshold={0.5}
+            onEndReached={handleEndReached}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => loadInbox(true, true)}
+                tintColor={whiteColor}
+                colors={[whiteColor]}
+                progressBackgroundColor={lightBlack}
+              />
+            }
           />
         ) : (
           <View
@@ -1074,67 +1220,142 @@ const InboxScreen = ({ navigation }) => {
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.7)',
             justifyContent: 'center',
             paddingHorizontal: spacings.large,
           }}
         >
-          <View style={[styles.detailsCard, { margin: 0 }]}>
-            <Pressable
-              style={{ alignSelf: 'flex-end', marginBottom: spacings.medium }}
-              onPress={() => setShowTicketModal(false)}
-            >
-              <Icon name="close" size={24} color={whiteColor} />
-            </Pressable>
-
+          <View style={[styles.detailsCard, styles.modalCardContainer]}>
+            {/* Header with Close Button */}
             <View
               style={[
-                styles.statusRow,
                 flexDirectionRow,
                 alignItemsCenter,
                 justifyContentSpaceBetween,
+                { marginBottom: spacings.xLarge },
               ]}
             >
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(ticket?.status) },
-                ]}
+              <Text style={styles.modalTitle}>Ticket Details</Text>
+              <Pressable
+                onPress={() => {
+                  setShowTicketModal(false);
+                  setTicketDetails(null);
+                }}
+                style={styles.closeButton}
               >
-                <Text style={styles.statusText}>{ticket?.status}</Text>
-              </View>
-              <Text style={styles.updatedDate}>
-                Updated {ticket?.updatedDate}
-              </Text>
+                <Icon name="close" size={24} color={whiteColor} />
+              </Pressable>
             </View>
 
-            <View style={styles.detailsGrid}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Machine:</Text>
-                <Text style={styles.detailValue}>{ticket?.machine}</Text>
+            {isLoadingDetails ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading ticket details...</Text>
               </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Serial:</Text>
-                <Text style={styles.detailValue}>{ticket?.serial}</Text>
-              </View>
-              <View className="detailItem">
-                <Text style={styles.detailLabel}>Category:</Text>
-                <Text style={styles.detailValue}>{ticket?.category}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Created:</Text>
-                <Text style={styles.detailValue}>{ticket?.createdDate}</Text>
-              </View>
-            </View>
+            ) : ticketDetails ? (
+              <ScrollView
+                style={styles.modalScrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+                nestedScrollEnabled={true}
+              >
+                {/* Status and Created Date Row */}
+                <View
+                  style={[
+                    styles.statusRow,
+                    flexDirectionRow,
+                    alignItemsCenter,
+                    justifyContentSpaceBetween,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(ticketDetails?.status) },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>
+                      {ticketDetails?.status || 'pending'}
+                    </Text>
+                  </View>
+                  <Text style={styles.updatedDate}>
+                    Created {formatDate(ticketDetails?.createdAt)}
+                  </Text>
+                </View>
 
-            <View style={styles.descriptionSection}>
-              <Text style={styles.sectionLabel}>Description</Text>
-              <View style={styles.descriptionBox}>
-                <Text style={styles.descriptionText}>
-                  {ticket?.description}
-                </Text>
+                {/* Ticket Number */}
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Ticket Number</Text>
+                  <Text style={styles.detailValue}>
+                    {ticketDetails?.ticketNumber || 'N/A'}
+                  </Text>
+                </View>
+
+                {/* Category */}
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Category</Text>
+                  <Text style={styles.detailValue}>
+                    {ticketDetails?.categoryId?.name || 'N/A'}
+                  </Text>
+                </View>
+
+                {/* Equipment details - only show if equipmentId exists */}
+                {ticketDetails?.equipmentId && (
+                  <>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Equipment Name</Text>
+                      <Text style={styles.detailValue}>
+                        {ticketDetails.equipmentId.name || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Serial Number</Text>
+                      <Text style={styles.detailValue}>
+                        {ticketDetails.equipmentId.serialNumber || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Model Number</Text>
+                      <Text style={styles.detailValue}>
+                        {ticketDetails.equipmentId.modelNumber || 'N/A'}
+                      </Text>
+                    </View>
+                  </>
+                )}
+
+                {/* Created Date */}
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Created Date</Text>
+                  <Text style={styles.detailValue}>
+                    {formatDate(ticketDetails?.createdAt) || 'N/A'}
+                  </Text>
+                </View>
+
+                {/* Description */}
+                <View style={styles.descriptionSection}>
+                  <Text style={styles.sectionLabel}>Description</Text>
+                  <View style={styles.descriptionBox}>
+                    <Text style={styles.descriptionText}>
+                      {ticketDetails?.description || 'No description provided'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Attachments */}
+                {ticketDetails?.attachments &&
+                  ticketDetails.attachments.length > 0 && (
+                    <View style={styles.attachmentsSection}>
+                      <Text style={styles.sectionLabel}>Attachments</Text>
+                      <Text style={styles.attachmentText}>
+                        {ticketDetails.attachments.length} attachment(s)
+                      </Text>
+                    </View>
+                  )}
+              </ScrollView>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>No ticket details available</Text>
               </View>
-            </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -1282,20 +1503,43 @@ const styles = StyleSheet.create({
     padding: spacings.xxLarge,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  statusRow: { marginBottom: spacings.large },
-  statusBadge: {
-    paddingHorizontal: spacings.medium,
-    paddingVertical: spacings.small,
-    borderRadius: 20,
+  modalCardContainer: {
+    margin: 0,
+    maxHeight: hp(85),
+    width: '100%',
   },
-  statusText: {
-    ...style.fontSizeSmall1x,
+  modalTitle: {
+    ...style.fontSizeLargeX,
     ...style.fontWeightBold,
     color: whiteColor,
+  },
+  closeButton: {
+    padding: spacings.small,
+    borderRadius: 20,
+    backgroundColor: lightColor,
+  },
+  statusRow: {
+    marginBottom: spacings.xLarge,
+    paddingBottom: spacings.large,
+    borderBottomWidth: 1,
+    borderBottomColor: lightColor,
+  },
+  statusBadge: {
+    paddingHorizontal: spacings.large,
+    paddingVertical: spacings.normal,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightBold,
+    color: whiteColor,
+    textTransform: 'capitalize',
   },
   updatedDate: {
     ...style.fontSizeSmall1x,
@@ -1304,37 +1548,47 @@ const styles = StyleSheet.create({
   },
   detailsGrid: { marginBottom: spacings.large },
   detailItem: {
+    marginBottom: spacings.large,
+    paddingBottom: spacings.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: lightColor,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacings.small,
   },
   detailLabel: {
-    ...style.fontSizeNormal,
+    ...style.fontSizeSmall1x,
     ...style.fontWeightThin,
-    color: whiteColor,
+    color: lightGrayColor,
+    marginBottom: spacings.small,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   detailValue: {
     ...style.fontSizeNormal,
     ...style.fontWeightMedium,
     color: whiteColor,
   },
-  descriptionSection: { marginBottom: spacings.large },
+  descriptionSection: {
+    marginTop: spacings.small,
+  },
   sectionLabel: {
     ...style.fontSizeNormal,
     ...style.fontWeightBold,
     color: whiteColor,
-    marginBottom: spacings.small,
+    marginBottom: spacings.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   descriptionBox: {
     backgroundColor: lightColor,
     borderRadius: 8,
-    padding: spacings.medium,
+    padding: spacings.large,
   },
   descriptionText: {
     ...style.fontSizeNormal,
     ...style.fontWeightThin,
     color: whiteColor,
-    lineHeight: 20,
+    lineHeight: 22,
   },
 
   // Swipe right-actions (visible when swiping left)
@@ -1347,4 +1601,33 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   archiveText: { color: whiteColor, marginTop: 6, fontWeight: '600' },
+  loadingContainer: {
+    padding: spacings.xxLarge,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: hp(30),
+  },
+  loadingText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightThin,
+    color: whiteColor,
+  },
+  modalScrollView: {
+    maxHeight: hp(65),
+  },
+  modalScrollContent: {
+    paddingBottom: spacings.xxLarge,
+    flexGrow: 1,
+  },
+  attachmentsSection: {
+    marginTop: spacings.small,
+    marginBottom: spacings.medium,
+  },
+  attachmentText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightThin,
+    color: whiteColor,
+    marginTop: spacings.small,
+    opacity: 0.8,
+  },
 });

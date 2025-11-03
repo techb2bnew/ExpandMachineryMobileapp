@@ -28,6 +28,7 @@ import { style, spacings } from '../constans/Fonts';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
+  fetchWithAuth,
 } from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,9 +44,7 @@ const {
 } = BaseStyle;
 
 const SelectEquipmentScreen = ({ navigation, route }) => {
-  const { supportType } = route.params || {
-    supportType: 'Applications Support',
-  };
+  const { supportType, categoryId } = route.params;
   // React.useEffect(() => {
   //   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
   //   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
@@ -61,26 +60,18 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
     const fetchEquipment = async () => {
       setIsLoading(true);
       try {
-        const token = await AsyncStorage.getItem('userToken');
-
-        if (!token) {
-          throw new Error('Missing authentication token');
-        }
-
-        const response = await fetch(
+        // Using fetchWithAuth - automatically handles token and auth errors
+        const response = await fetchWithAuth(
           `${API_ENDPOINTS.BASE_URL}/api/app/equipment`,
           {
             method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
+          }
         );
 
         const result = await response.json();
 
         if (response.ok && Array.isArray(result?.data)) {
+          console.log('result.data', result.data);
           setEquipmentModels(result.data);
         } else {
           const message = result?.message || 'Unable to load equipment list';
@@ -129,6 +120,8 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
     if (selectedEquipment && serialNumber.trim()) {
       navigation.navigate('IssueDescription', {
         supportType,
+        categoryId,
+        equipmentId: selectedEquipment?.id,
         equipmentData: {
           model: selectedEquipment?.name,
           serial: serialNumber.trim(),
@@ -230,8 +223,8 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
               {/* Dropdown Modal */}
               <Modal
                 visible={showDropdown}
-                transparent={true} 
-                statusBarTranslucent={true} 
+                transparent={true}
+                statusBarTranslucent={true}
                 animationType="fade"
                 onRequestClose={() => setShowDropdown(false)}
               >

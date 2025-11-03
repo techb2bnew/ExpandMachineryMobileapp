@@ -13,7 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightPinkAccent, lightBlack, lightColor, greenColor, blueColor } from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp, fetchWithAuth } from '../utils';
 import { BaseStyle } from '../constans/Style';
 import Feather from 'react-native-vector-icons/Feather'
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,18 +142,9 @@ const PersonalInformationScreen = ({ navigation }) => {
     try {
       setProfileLoading(true);
 
-      const token = await AsyncStorage.getItem('userToken');
-
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
+      // Using fetchWithAuth - automatically handles token and auth errors
+      const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
         method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       const data = await response.json();
@@ -222,26 +213,17 @@ const PersonalInformationScreen = ({ navigation }) => {
     try {
       setIsSaving(true);
 
-      const token = await AsyncStorage.getItem('userToken');
-
-      if (!token) {
-        console.log("Personal Info Update Token Error:", token);
-
-        return;
-      }
-
       const payload = {
         name: trimmedName,
         email: currentEmail,
         phone: sanitizePhoneNumber(trimmedPhone),
       };
 
-      const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
+      // Using fetchWithAuth - automatically handles token and auth errors
+      const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
         method: 'PUT',
         headers: {
-          Accept: '*/*',
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -381,10 +363,10 @@ const PersonalInformationScreen = ({ navigation }) => {
             <View style={styles.fieldContainer}>
               <Text style={styles.fieldLabel}>Email Address</Text>
               {isEditing ? (
-                <View style={[styles.inputContainer, flexDirectionRow, alignItemsCenter]}>
-                  <Icon name="mail-outline" size={20} color={"blue"} style={styles.inputIcon} />
+                <View style={[styles.inputContainer, styles.disabledInputContainer, flexDirectionRow, alignItemsCenter]}>
+                  <Icon name="mail-outline" size={20} color={grayColor} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.textInputWithIcon}
+                    style={[styles.textInputWithIcon]}
                     value={userData.email}
                     placeholder="Enter your email"
                     placeholderTextColor={grayColor}
@@ -431,7 +413,7 @@ const PersonalInformationScreen = ({ navigation }) => {
                   style={[styles.cancelButton, flexDirectionRow, alignJustifyCenter]}
                   onPress={handleCancel}
                 >
-                  <Icon name="close" size={16} color={grayColor} />
+                  <Icon name="close" size={16} color={whiteColor} />
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
 
@@ -626,6 +608,13 @@ const styles = StyleSheet.create({
     ...style.fontWeightThin,
     color: whiteColor,
   },
+  disabledInputContainer: {
+    opacity: 0.5,
+  },
+  disabledTextInput: {
+    color: grayColor,
+    opacity: 0.7,
+  },
   accountCard: {
     backgroundColor: lightBlack,
     borderRadius: 12,
@@ -666,7 +655,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: grayColor,
+    borderColor: whiteColor,
     borderRadius: 8,
     paddingVertical: spacings.medium,
     marginRight: spacings.small,
@@ -674,7 +663,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     ...style.fontSizeNormal,
     ...style.fontWeightMedium,
-    color: grayColor,
+    color: whiteColor,
     marginLeft: spacings.small,
   },
   saveButton: {

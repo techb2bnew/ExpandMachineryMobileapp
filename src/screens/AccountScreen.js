@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import ConfirmationModal from '../components/Modals/ConfirmationModal'
 import { darkgrayColor, whiteColor, lightGrayColor, grayColor, lightPinkAccent, supportBlue, redColor, supportGreen, lightColor, lightBlack } from '../constans/Color'
 import { style, spacings } from '../constans/Fonts'
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp, fetchWithAuth } from '../utils';
 import { BaseStyle } from '../constans/Style'
 import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,21 +42,9 @@ const AccountScreen = ({ navigation }) => {
       setProfileLoading(true);
       setProfileError('');
 
-      const token = await AsyncStorage.getItem('userToken');
-
-      if (!token) {
-        setProfileError('Authentication token not found. Please log in again.');
-        setProfileData(null);
-        return;
-      }
-     console.log("Profile Token:", token);
-
-      const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
+      // Using fetchWithAuth - automatically handles token and auth errors
+      const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
         method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       const data = await response.json();
@@ -67,6 +55,7 @@ const AccountScreen = ({ navigation }) => {
         setProfileData(customer);
         await AsyncStorage.setItem('userData', JSON.stringify(customer));
       } else {
+        // If response not ok and auth error, fetchWithAuth already handled logout
         const errorMsg = data?.message || data?.error || 'Unable to fetch profile at the moment.';
         setProfileError(errorMsg);
         setProfileData(null);
@@ -87,8 +76,8 @@ const AccountScreen = ({ navigation }) => {
     }, [fetchProfile])
   )
 
-  const rawDisplayName = profileData?.name || profileData?.fullName || 'John Smith'
-  const displayName = formatDisplayName(rawDisplayName) || 'John Smith'
+  const rawDisplayName = profileData?.name || profileData?.fullName || 'Customer'
+  const displayName = formatDisplayName(rawDisplayName) || 'Customer'
   // const totalTickets = profileData ? (profileData?.totalSupportTickets ?? profileData?.totalTickets ?? 12) : 12
   // const membershipDuration = profileData
   //   ? calculateMembershipDuration(profileData?.memberSince, profileData?.createdAt)
@@ -155,19 +144,9 @@ const AccountScreen = ({ navigation }) => {
         try {
           setModalVisible(false);
 
-          const token = await AsyncStorage.getItem('userToken');
-
-          if (!token) {
-            console.log('Delete Account Token Error:', token);
-            return;
-          }
-
-          const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile/delete-account`, {
+          // Using fetchWithAuth - automatically handles token and auth errors
+          const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/profile/delete-account`, {
             method: 'DELETE',
-            headers: {
-              Accept: 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
           });
 
           const data = await response.json();
@@ -175,17 +154,13 @@ const AccountScreen = ({ navigation }) => {
 
           if (response.ok) {
             await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              })
-            );
+            navigation.navigate('Auth');
             setModalVisible(false);
           } else {
+            // If response not ok and auth error, fetchWithAuth already handled logout
             const errorMsg = data?.message || data?.error || 'Unable to delete account. Please try again.';
             console.log('Delete Account Response Error:', errorMsg);
-
+            setModalVisible(false);
           }
         } catch (error) {
           console.log('Delete Account Error:', error);
@@ -228,12 +203,7 @@ const AccountScreen = ({ navigation }) => {
 
           await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
           console.log('User signed out successfully');
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            })
-          );
+          navigation.navigate('Auth');
           setModalVisible(false);
         } catch (error) {
           console.log('Logout error:', error);

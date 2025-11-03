@@ -41,9 +41,14 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
     supportType,
     equipmentData,
     description,
-    attachedImages,
+    attachments, // Changed from attachedImages
+    attachedImages, // Keep for backward compatibility
     ticketNumber,
+    ticketData, // Ticket data from API response
   } = route.params;
+
+  // Use attachments if available, otherwise fall back to attachedImages
+  const displayAttachments = attachments || attachedImages || [];
 
   const handleStartChat = () => {
     console.log('Start chat for ticket:', ticketNumber);
@@ -52,7 +57,7 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
       supportType,
       equipmentData,
       description,
-      attachedImages,
+      attachedImages: displayAttachments,
     });
   };
 
@@ -129,30 +134,48 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          {attachedImages?.length > 0 && (
+          {displayAttachments?.length > 0 && (
             <View style={styles.detailRow}>
               <View style={[flexDirectionRow, alignItemsCenter]}>
                 <Icon name="camera-outline" size={16} color={whiteColor} />
                 <View style={{ paddingHorizontal: spacings.large, flex: 1 }}>
                   <Text style={styles.detailLabel}>Attachments</Text>
                   <Text style={styles.detailValue}>
-                    {attachedImages?.length} photo
-                    {attachedImages?.length !== 1 ? 's' : ''} attached
+                    {displayAttachments?.length} file
+                    {displayAttachments?.length !== 1 ? 's' : ''} attached
                   </Text>
                 </View>
               </View>
             </View>
           )}
-          {attachedImages?.length > 0 && (
+          {displayAttachments?.length > 0 && (
             <View style={styles.imagesContainer}>
-              {attachedImages?.map(img => (
-                <View key={img?.id} style={styles.imageWrapper}>
-                  <Image
-                    source={{ uri: img?.uri }}
-                    style={styles.imagePreview}
-                  />
-                </View>
-              ))}
+              {displayAttachments?.map((attachment, index) => {
+                // Check if it's an image
+                const isImage = attachment?.type?.startsWith('image/') ||
+                  attachment?.uri?.match(/\.(jpg|jpeg|png|gif|bmp)$/i);
+
+                if (isImage) {
+                  return (
+                    <View key={attachment?.id || index} style={styles.imageWrapper}>
+                      <Image
+                        source={{ uri: attachment?.uri }}
+                        style={styles.imagePreview}
+                      />
+                    </View>
+                  );
+                } else {
+                  // Show document icon for non-image files
+                  return (
+                    <View key={attachment?.id || index} style={styles.fileWrapper}>
+                      <Icon name="document-text-outline" size={32} color={whiteColor} />
+                      <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
+                        {attachment?.name || 'Document'}
+                      </Text>
+                    </View>
+                  );
+                }
+              })}
             </View>
           )}
 
@@ -471,11 +494,29 @@ const styles = StyleSheet.create({
     marginBottom: spacings.medium,
   },
   imagePreview: {
-    width: wp(27.5),
-    height: wp(27),
+    width: wp(20.5),
+    height: wp(20),
     borderRadius: 8,
     borderWidth: 1,
     borderColor: lightGrayColor,
+  },
+  fileWrapper: {
+    width: wp(20.5),
+    height: wp(20),
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: lightGrayColor,
+    backgroundColor: lightBlack,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacings.small,
+  },
+  fileName: {
+    ...style.fontSizeSmall1x,
+    ...style.fontWeightThin,
+    color: whiteColor,
+    marginTop: spacings.xsmall,
+    textAlign: 'center',
   },
 });
 

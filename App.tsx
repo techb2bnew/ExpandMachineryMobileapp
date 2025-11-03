@@ -6,7 +6,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
-import { heightPercentageToDP, widthPercentageToDP } from './src/utils';
+import { heightPercentageToDP, widthPercentageToDP, setNavigationRef } from './src/utils';
 import CustomToast from './src/components/CustomToast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -38,7 +38,11 @@ export default function App() {
             backgroundColor: '#2F2F2F',
           }}
         >
-          <NavigationContainer>
+          <NavigationContainer
+            ref={(ref) => {
+              setNavigationRef(ref);
+            }}
+          >
             {isLoading ? (
               <SplashScreen />
             ) : userToken ? (

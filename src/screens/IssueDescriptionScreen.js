@@ -474,6 +474,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   PermissionsAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {
@@ -483,15 +484,19 @@ import {
   grayColor,
   lightBlack,
   lightColor,
+  redColor,
 } from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
+  fetchWithAuth,
 } from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from '../constans/Constants';
 
 // ⬇️ Updated import per your instructions
 import { pick, keepLocalCopy } from '@react-native-documents/picker';
@@ -505,10 +510,11 @@ const {
 } = BaseStyle;
 
 const IssueDescriptionScreen = ({ navigation, route }) => {
-  const { supportType, equipmentData } = route.params || {};
+  const { supportType, equipmentData, categoryId, equipmentId } = route.params || {};
 
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const requestMediaPermissions = async () => {
     if (Platform.OS !== 'android') return true;
@@ -606,33 +612,66 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
   // ⬇️ Updated to use pick + keepLocalCopy (no pickSingle / copyTo)
   const pickDocument = async () => {
     try {
-      // Previously: const result = await DocumentPicker.pick({...})
-      // Now:
       const [file] = await pick();
 
       if (!file?.uri) return;
 
-      const [localCopy] = await keepLocalCopy({
-        files: [
-          {
-            uri: file.uri,
-            fileName: file.name ?? 'fallbackName',
-          },
-        ],
-        destination: 'documentDirectory',
-      });
+      // For iOS, use the original file URI directly instead of keepLocalCopy
+      // keepLocalCopy can cause issues with temp directories getting cleared
+      let uri = file.uri;
+      let fileName = file.name ?? 'fallbackName';
 
-      const uri = localCopy?.uri ?? file.uri;
+      // For iOS, ensure file:// protocol is present
+      if (Platform.OS === 'ios') {
+        if (!uri.startsWith('file://')) {
+          // If it's an absolute path, add file://
+          if (uri.startsWith('/')) {
+            uri = 'file://' + uri;
+          }
+        }
+      }
+
+      // For Android, try to use keepLocalCopy to ensure file persists
+      if (Platform.OS === 'android') {
+        try {
+          const [localCopy] = await keepLocalCopy({
+            files: [
+              {
+                uri: file.uri,
+                fileName: file.name ?? 'fallbackName',
+              },
+            ],
+            destination: 'documentDirectory',
+          });
+          
+          if (localCopy?.uri) {
+            uri = localCopy.uri;
+            fileName = localCopy?.name ?? fileName;
+          }
+        } catch (copyError) {
+          console.log('keepLocalCopy error (using original):', copyError);
+          // Fallback to original URI if keepLocalCopy fails
+        }
+      }
 
       const att = {
         id: Date.now(),
-        uri,
-        name: localCopy?.name ?? file.name ?? getNameFromUri(uri) ?? 'file',
+        uri: uri,
+        name: fileName ?? getNameFromUri(uri) ?? 'file',
         // Keep best-effort type mapping without changing other logic
         type: file.type || file.mimeType || 'application/octet-stream',
         size: file.size,
         from: 'document',
       };
+      
+      console.log('Document picked:', {
+        originalUri: file.uri,
+        finalUri: uri,
+        name: att.name,
+        type: att.type,
+        platform: Platform.OS,
+      });
+      
       setAttachments(prev => limit5([...prev, att]));
     } catch (err) {
       // Silent return on user cancel; log others
@@ -647,7 +686,7 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!description.trim()) {
       Alert.alert(
         'Required Field',
@@ -656,19 +695,138 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
       return;
     }
 
-    const ticketNumber =
-      'EXP' +
-      Math.floor(Math.random() * 100000000)
-        .toString()
-        .padStart(8, '0');
+    try {
+      setIsSubmitting(true);
 
-    navigation.navigate('RequestSubmitted', {
-      supportType,
-      equipmentData,
-      description: description.trim(),
-      attachments,
-      ticketNumber,
-    });
+      // Create FormData for multipart/form-data
+      const formData = new FormData();
+
+      // Add description
+      formData.append('description', description.trim());
+
+      // Add categoryId (required)
+      if (categoryId) {
+        formData.append('categoryId', categoryId);
+      }
+
+      // Add equipmentId (if available, not all categories require equipment)
+      if (equipmentId) {
+        formData.append('equipmentId', equipmentId);
+      }
+
+      // Add attachments if any
+      if (attachments && attachments.length > 0) {
+        attachments.forEach((attachment, index) => {
+          // Prepare file URI for iOS and Android
+          let fileUri = attachment.uri;
+          
+          // iOS: Keep file:// protocol, but ensure proper formatting
+          // Android: Can use either format
+          if (Platform.OS === 'ios') {
+            // iOS requires file:// protocol for FormData
+            // If URI doesn't start with file://, add it
+            if (!fileUri.startsWith('file://')) {
+              // If it's already an absolute path, add file://
+              if (fileUri.startsWith('/')) {
+                fileUri = 'file://' + fileUri;
+              } else {
+                // Keep as is if it has other format
+                fileUri = fileUri;
+              }
+            }
+          } else {
+            // Android: Keep file:// or content:// URIs. If it's a plain path, prefix file://
+            if (!fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
+              if (fileUri.startsWith('/')) {
+                fileUri = 'file://' + fileUri;
+              }
+            }
+          }
+
+          // React Native FormData format for file uploads
+          const fileData = {
+            uri: fileUri,
+            type: attachment.type || 'image/jpeg',
+            name: attachment.name || `attachment_${index}.jpg`,
+          };
+
+          console.log(`Preparing attachment ${index}:`, {
+            originalUri: attachment.uri,
+            processedUri: fileUri,
+            type: fileData.type,
+            name: fileData.name,
+            platform: Platform.OS,
+          });
+
+          // For React Native, append file object directly
+          formData.append('attachments', fileData);
+        });
+      }
+
+      console.log('Submitting ticket with:', {
+        description: description.trim(),
+        categoryId,
+        equipmentId,
+        attachmentsCount: attachments?.length || 0,
+      });
+
+      // Using fetchWithAuth - automatically handles token and auth errors
+      const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/tickets/create`, {
+        method: 'POST',
+        headers: {
+          Accept: '*/*',
+          // Don't set Content-Type for FormData, let fetch set it with boundary
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log('Create Ticket API Response:', data);
+
+      // Check for auth errors
+      if (!response.ok) {
+       
+
+        // Show error message
+        const errorMsg = data?.message || data?.error || 'Failed to create ticket. Please try again.';
+        console.log('Error', errorMsg);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Success - navigate to RequestSubmitted screen
+      if (response.ok) {
+        // Extract ticket data from response
+        // Response structure: { message: 'Ticket created successfully', ticket: {...} }
+        const ticket = data?.ticket || data?.data?.ticket || data?.data;
+        const ticketNumber = ticket?.ticketNumber || data?.ticketNumber || data?.data?.ticketNumber || '';
+
+        console.log('Ticket created successfully:', {
+          ticketNumber,
+          ticket: ticket,
+          fullResponse: data
+        });
+
+        navigation.navigate('RequestSubmitted', {
+          supportType,
+          equipmentData,
+          description: description.trim(),
+          attachments,
+          ticketNumber,
+          ticketData: ticket || data?.ticket || data?.data || data,
+          fullResponse: data, 
+        });
+      } else {
+        // Check for auth errors even in success response
+        const errorMsg = data?.message || data?.error || 'Failed to create ticket. Please try again.';
+        console.log('Error', errorMsg);
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Create Ticket Error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -697,7 +855,7 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
           <View style={{ padding: spacings.xLarge }}>
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>
-                What can we help you with?
+                What can we help you with? <Text style={styles.required}>*</Text>
               </Text>
 
               <TextInput
@@ -790,12 +948,19 @@ Include any error messages, software versions, or specific operations you're try
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                !description.trim() && styles.disabledButton,
+                (!description.trim() || isSubmitting) && styles.disabledButton,
               ]}
               onPress={handleSubmit}
-              disabled={!description.trim()}
+              disabled={!description.trim() || isSubmitting}
             >
-              <Text style={styles.submitButtonText}>Submit Request</Text>
+              {isSubmitting ? (
+                <View style={[flexDirectionRow, alignItemsCenter]}>
+                  <ActivityIndicator size="small" color={whiteColor} style={{ marginRight: spacings.small }} />
+                  <Text style={styles.submitButtonText}>Submitting...</Text>
+                </View>
+              ) : (
+                <Text style={styles.submitButtonText}>Submit Request</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -904,7 +1069,8 @@ const styles = StyleSheet.create({
   },
 
   fileChip: {
-    maxWidth: wp(60),
+    width: wp(27),
+    height: wp(27),
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -934,6 +1100,9 @@ const styles = StyleSheet.create({
     ...style.fontWeightMedium,
     color: whiteColor,
   },
+  required: {
+    color: redColor,
+  }
 });
 
 export default IssueDescriptionScreen;

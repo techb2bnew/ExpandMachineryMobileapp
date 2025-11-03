@@ -9,9 +9,9 @@ const Stack = createNativeStackNavigator();
 export default function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
-      <Stack.Screen name="Tabs" component={BottomTabs} />  
+      <Stack.Screen name="Login" component={LoginScreen} options={{ gestureEnabled: false }}/>
+      <Stack.Screen name="CreateAccount" component={CreateAccountScreen} options={{ gestureEnabled: false }}/>
+      <Stack.Screen name="Tabs" component={BottomTabs} options={{ gestureEnabled: false }}/>  
     </Stack.Navigator>
   );
 }
