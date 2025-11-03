@@ -44,7 +44,9 @@ const {
 } = BaseStyle;
 
 const SelectEquipmentScreen = ({ navigation, route }) => {
-  const { supportType, categoryId } = route.params;
+  const { supportType } = route.params || {
+    supportType: 'Applications Support',
+  };
   // React.useEffect(() => {
   //   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
   //   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
@@ -144,7 +146,10 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'height' : undefined}
     >
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: lightColor }}>
+      <SafeAreaView
+        edges={['top']}
+        style={{ flex: 1, backgroundColor: lightColor }}
+      >
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}

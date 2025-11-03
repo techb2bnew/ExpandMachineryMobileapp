@@ -1,21 +1,22 @@
-export const WELCOME_BACK = "Welcome Back";
-export const SIGN_IN_TO_YOUR_ACCOUNT = "Sign in to your account";
-export const EMAIL_ADDRESS = "Email Address";
-export const ENTER_YOUR_EMAIL = "Enter your email";
-export const PASSWORD = "Password";
-export const ENTER_YOUR_PASSWORD = "Enter your password";
-export const SIGN_IN = "Sign In";
-export const DONT_HAVE_ACCOUNT = "Don’t have an account?";
-export const CREATE_ACCOUNT = "Create Account";
-export const FULL_NAME = "Full Name";
-export const ENTER_YOUR_FULL_NAME = "Enter your full name";
-export const PHONE_NUMBER = "Phone Number";
-export const ENTER_YOUR_PHONE_NUMBER = "Enter your phone number";
-export const CONFIRM_PASSWORD = "Confirm Password";
-export const CONFIRM_YOUR_PASSWORD = "Confirm your password";
-export const ALREADY_HAVE_ACCOUNT = "Already have an account?";
-export const SIGN_UP = "Sign Up";
-export const JOIN_EXPAND = "Join EXPAND Support";
+export const WELCOME_BACK = 'Welcome Back';
+export const SIGN_IN_TO_YOUR_ACCOUNT = 'Sign in to your account';
+export const EMAIL_ADDRESS = 'Email Address';
+export const ENTER_YOUR_EMAIL = 'Enter your email';
+export const PASSWORD = 'Password';
+export const ENTER_YOUR_PASSWORD = 'Enter your password';
+export const SIGN_IN = 'Sign In';
+export const DONT_HAVE_ACCOUNT = 'Don’t have an account?';
+export const CREATE_ACCOUNT = 'Create Account';
+export const FULL_NAME = 'Full Name';
+export const ENTER_YOUR_FULL_NAME = 'Enter your full name';
+export const PHONE_NUMBER = 'Phone Number';
+export const ENTER_YOUR_PHONE_NUMBER = 'Enter your phone number';
+export const CONFIRM_PASSWORD = 'Confirm Password';
+export const CONFIRM_YOUR_PASSWORD = 'Confirm your password';
+export const ALREADY_HAVE_ACCOUNT = 'Already have an account?';
+export const SIGN_UP = 'Sign Up';
+export const JOIN_EXPAND = 'Join EXPAND Support';
+
 
 export const API_ENDPOINTS = {
     BASE_URL: 'https://expand.shabad-guru.org',
