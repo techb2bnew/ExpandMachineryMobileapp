@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {
@@ -30,6 +31,8 @@ import {
 } from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_ENDPOINTS } from '../constans/Constants';
 
 const {
   flex,
@@ -43,44 +46,92 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
   const { supportType } = route.params || {
     supportType: 'Applications Support',
   };
-// React.useEffect(() => {
-//   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
-//   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
-// }, [navigation]);
+  // React.useEffect(() => {
+  //   navigation.getParent()?.setOptions({ tabBarStyle: { display: 'none' } });
+  //   return () => navigation.getParent()?.setOptions({ tabBarStyle: { display: 'flex' } });
+  // }, [navigation]);
   const [searchText, setSearchText] = useState('');
-  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [serialNumber, setSerialNumber] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [equipmentData, setEquipmentData] = useState({
-    model: '',
-    serial: '',
+  const [equipmentModels, setEquipmentModels] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEquipment = async () => {
+      setIsLoading(true);
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+
+        if (!token) {
+          throw new Error('Missing authentication token');
+        }
+
+        const response = await fetch(
+          `${API_ENDPOINTS.BASE_URL}/api/app/equipment`,
+          {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const result = await response.json();
+
+        if (response.ok && Array.isArray(result?.data)) {
+          setEquipmentModels(result.data);
+        } else {
+          const message = result?.message || 'Unable to load equipment list';
+          console.log("Equipment Fetch Response Error:", message);
+        }
+      } catch (error) {
+        console.error('Equipment Fetch Error:', error);
+
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEquipment();
+  }, []);
+  const getEquipmentLabel = equipment => {
+    if (!equipment) {
+      return '';
+    }
+
+    const name = equipment?.name?.trim?.() || '';
+    const serial = equipment?.serialNumber?.trim?.();
+
+    if (name && serial) {
+      return `${name} (${serial})`;
+    }
+
+    return name || serial || '';
+  };
+
+  const filteredModels = equipmentModels.filter(model => {
+    const searchLower = searchText.toLowerCase();
+    return [model?.name, model?.serialNumber, getEquipmentLabel(model)]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(searchLower));
   });
 
-  const equipmentModels = [
-    'Swiss Machine SM-200',
-    'Swiss Machine SM-300',
-    'Swiss Machine SM-400',
-    'Turning Center TC-100',
-  ];
-
-  const filteredModels = equipmentModels.filter(model =>
-    model.toLowerCase().includes(searchText.toLowerCase()),
-  );
-
-  const handleModelSelect = model => {
-    setSelectedModel(model);
-    setEquipmentData(prev => ({ ...prev, model }));
+  const handleModelSelect = equipment => {
+    setSelectedEquipment(equipment);
+    setSerialNumber(equipment?.serialNumber?.trim?.() || '');
     setShowDropdown(false);
     setSearchText('');
   };
 
   const handleContinue = () => {
-    if (selectedModel && serialNumber.trim()) {
+    if (selectedEquipment && serialNumber.trim()) {
       navigation.navigate('IssueDescription', {
         supportType,
         equipmentData: {
-          model: selectedModel,
-          serial: serialNumber,
+          model: selectedEquipment?.name,
+          serial: serialNumber.trim(),
         },
       });
     }
@@ -91,16 +142,16 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
       style={styles.modelItem}
       onPress={() => handleModelSelect(item)}
     >
-      <Text style={styles.modelText}>{item}</Text>
+      <Text style={styles.modelText}>{getEquipmentLabel(item)}</Text>
     </TouchableOpacity>
   );
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-     behavior={Platform.OS === 'ios' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'height' : undefined}
     >
-      <SafeAreaView  edges={['top']} style={{ flex: 1, backgroundColor: lightColor }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: lightColor }}>
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
@@ -155,16 +206,20 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
                 ]}
                 onPress={() => setShowDropdown(!showDropdown)}
               >
-                <Text
-                  style={[
-                    styles.modelSelectorText,
-                    selectedModel
-                      ? { color: whiteColor }
-                      : { color: lightGrayColor },
-                  ]}
-                >
-                  {selectedModel || 'Choose your equipment model'}
-                </Text>
+                <View style={styles.modelSelectorContent}>
+                  <Text
+                    style={[
+                      styles.modelSelectorText,
+                      selectedEquipment
+                        ? { color: whiteColor }
+                        : { color: lightGrayColor },
+                    ]}
+                  >
+                    {selectedEquipment
+                      ? getEquipmentLabel(selectedEquipment)
+                      : 'Choose your equipment model'}
+                  </Text>
+                </View>
                 <Icon
                   name={showDropdown ? 'chevron-up' : 'chevron-down'}
                   size={20}
@@ -175,33 +230,46 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
               {/* Dropdown Modal */}
               <Modal
                 visible={showDropdown}
-                transparent={true} // 👈 transparent true kar
-                statusBarTranslucent={true} // 👈 Android ke liye important
+                transparent={true} 
+                statusBarTranslucent={true} 
                 animationType="fade"
                 onRequestClose={() => setShowDropdown(false)}
               >
                 <View style={styles.modalOverlay}>
                   <View style={styles.dropdownContainer}>
-                    <Text
-                      style={[
-                        {
-                          color: whiteColor,
-                          textAlign: 'center',
-                          padding: spacings.large,
-                          fontSize: style.fontSizeMedium.fontSize,
-                          fontWeight: style.fontWeightThin.fontWeight,
-                        },
-                      ]}
-                    >
-                      Choose your equipment model
-                    </Text>
-                    <FlatList
-                      data={filteredModels}
-                      renderItem={renderModelItem}
-                      keyExtractor={item => item}
-                      showsVerticalScrollIndicator={false}
-                      style={styles.dropdownList}
-                    />
+                    <View style={styles.dropdownHeader}>
+                      <View style={styles.dropdownHeaderSpacer} />
+                      <Text style={styles.dropdownTitle}>
+                        Choose your equipment
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.dropdownCloseButton}
+                        onPress={() => setShowDropdown(false)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Icon name="close" size={20} color={whiteColor} />
+                      </TouchableOpacity>
+                    </View>
+                    {isLoading ? (
+                      <View style={styles.loaderContainer}>
+                        <ActivityIndicator size="small" color={whiteColor} />
+                      </View>
+                    ) : (
+                      <FlatList
+                        data={filteredModels}
+                        renderItem={renderModelItem}
+                        keyExtractor={(item, index) =>
+                          item?.id || item?.serialNumber || item?.name || String(index)
+                        }
+                        showsVerticalScrollIndicator={false}
+                        style={styles.dropdownList}
+                        ListEmptyComponent={
+                          <Text style={styles.emptyStateText}>
+                            No equipment found
+                          </Text>
+                        }
+                      />
+                    )}
                   </View>
                 </View>
               </Modal>
@@ -227,7 +295,7 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
             </View>
 
             {/* Selected Equipment Card (only show when both are selected) */}
-            {selectedModel && serialNumber && (
+            {selectedEquipment && serialNumber && (
               <View
                 style={[
                   styles.selectedCard,
@@ -237,7 +305,9 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
                 <Text style={[styles.selectedTitle, { color: greenColor }]}>
                   Selected Equipment
                 </Text>
-                <Text style={styles.selectedModel}>{selectedModel}</Text>
+                <Text style={styles.selectedModel}>
+                  {getEquipmentLabel(selectedEquipment)}
+                </Text>
                 <Text style={styles.selectedSerial}>
                   Serial: {serialNumber}
                 </Text>
@@ -248,11 +318,11 @@ const SelectEquipmentScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={[
                 styles.continueButton,
-                (!selectedModel || !serialNumber.trim()) &&
-                  styles.disabledButton,
+                (!selectedEquipment || !serialNumber.trim()) &&
+                styles.disabledButton,
               ]}
               onPress={handleContinue}
-              disabled={!selectedModel || !serialNumber.trim()}
+              disabled={!selectedEquipment || !serialNumber.trim()}
             >
               <Text style={styles.continueButtonText}>
                 Continue to Issue Description
@@ -341,6 +411,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: spacings.large,
   },
+  modelSelectorContent: {
+    flex: 1,
+  },
   modelSelectorText: {
     ...style.fontSizeNormal,
     ...style.fontWeightThin,
@@ -369,6 +442,28 @@ const styles = StyleSheet.create({
   dropdownList: {
     maxHeight: hp(35),
   },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacings.large,
+    paddingTop: spacings.large,
+    paddingBottom: spacings.small,
+  },
+  dropdownTitle: {
+    flex: 1,
+    ...style.fontSizeMedium,
+    ...style.fontWeightThin,
+    color: whiteColor,
+    textAlign: 'center',
+  },
+  dropdownCloseButton: {
+    padding: spacings.xsmall,
+  },
+  dropdownHeaderSpacer: {
+    width: 32,
+    height: 32,
+  },
   modelItem: {
     padding: spacings.large,
     borderBottomWidth: 1,
@@ -378,6 +473,18 @@ const styles = StyleSheet.create({
     ...style.fontSizeNormal,
     ...style.fontWeightThin,
     color: whiteColor,
+  },
+  loaderContainer: {
+    paddingVertical: spacings.xxLarge,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    ...style.fontSizeSmall1x,
+    ...style.fontWeightThin,
+    color: lightGrayColor,
+    textAlign: 'center',
+    paddingVertical: spacings.large,
   },
   serialInput: {
     backgroundColor: lightColor,

@@ -49,6 +49,7 @@ const AccountScreen = ({ navigation }) => {
         setProfileData(null);
         return;
       }
+     console.log("Profile Token:", token);
 
       const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/profile`, {
         method: 'GET',
