@@ -1,218 +1,3 @@
-// import React, { useState, useEffect } from 'react';
-// import {
-//   View,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   StyleSheet,
-// } from 'react-native';
-// import colors from '../constans/Color';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-// import { widthPercentageToDP } from '../utils';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { API_ENDPOINTS } from '../constans/Constants';
-
-// const CustomerFormScreen = ({ route, navigation }) => {
-//   const { type, customerData } = route.params || {}; // type: 'edit' | 'add'
-//   const isEdit = type === 'edit';
-
-//   const [firstName, setFirstName] = useState('');
-//   const [lastName,  setLastName]  = useState('');
-//   const [email,     setEmail]     = useState('');
-//   const [phone,     setPhone]     = useState('');
-//   const [password,  setPassword]  = useState('');
-//   const [userToken, setUserToken] = useState(null);
-//   const [loading,   setLoading]   = useState(false);
-
-//   useEffect(() => {
-//     const bootstrap = async () => {
-//       try {
-//         const token = await AsyncStorage.getItem('userToken');
-//         setUserToken(token);
-//       } catch (e) {
-//         console.log('error reading token', e);
-//       }
-//     };
-//     bootstrap();
-//   }, []);
-
-//   useEffect(() => {
-//     if (isEdit && customerData) {
-//       setFirstName(customerData?.name || '');
-//       setLastName(customerData?.name || '');
-//       setEmail(customerData?.email || '');
-//       setPhone(customerData?.phone || '');
-
-//       // password hidden in edit
-//     }
-//   }, [customerData, isEdit]);
-
-//   const handleSave = async () => {
-//     try {
-//       setLoading(true);
-
-//       const urlBase = `${API_ENDPOINTS.BASE_URL}/api/app/agent/customers`;
-//       const headers = {
-//         'Content-Type': 'application/json',
-//         Accept: 'application/json',
-//         Authorization: `Bearer ${userToken}`,
-//       };
-
-//       const body = { firstName, lastName, email, phone };
-
-//       if (isEdit) {
-//          const edit = { firstName, lastName, email, phone };
-//         console.log("bodybodybody", body,userToken);
-//         // UPDATE
-//         const res = await fetch(`${urlBase}/${customerData._id}`, {
-//           method: 'PUT',
-//           headers,
-//           body: JSON.stringify(body),
-//         });
-//         if (!res.ok) throw new Error('Failed to update customer');
-//       } else {
-//         // CREATE (include password if provided)
-//         const createBody = password ? { ...body, password } : body;
-// console.log("createBody", createBody);
-
-//         const res = await fetch(urlBase, {
-//           method: 'POST',
-//           headers,
-//           body: JSON.stringify(createBody),
-//         });
-//         if (!res.ok) throw new Error('Failed to add customer');
-//       }
-
-//       navigation.goBack();
-//     } catch (err) {
-//       console.log('Save error:', err.message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.container} contentContainerStyle={styles.content}>
-//       <Text style={styles.title}>{isEdit ? 'Edit Customer' : 'Add Customer'}</Text>
-//       <Text style={styles.subtitle}>
-//         {isEdit
-//           ? `Update agent information for ${customerData?.firstName || ''} ${customerData?.lastName || ''}`
-//           : 'Enter new customer information'}
-//       </Text>
-
-//       <View style={styles.inputGroup}>
-//         <Text style={styles.label}>First Name*</Text>
-//         <TextInput
-//           value={firstName}
-//           onChangeText={setFirstName}
-//           style={styles.input}
-//           placeholder="Enter first name"
-//           placeholderTextColor={colors.textSecondary}
-//         />
-//       </View>
-
-//       <View style={styles.inputGroup}>
-//         <Text style={styles.label}>Last Name*</Text>
-//         <TextInput
-//           value={lastName}
-//           onChangeText={setLastName}
-//           style={styles.input}
-//           placeholder="Enter last name"
-//           placeholderTextColor={colors.textSecondary}
-//         />
-//       </View>
-
-//       <View style={styles.inputGroup}>
-//         <Text style={styles.label}>Email*</Text>
-//         <TextInput
-//           value={email}
-//           onChangeText={setEmail}
-//           style={styles.input}
-//           keyboardType="email-address"
-//           placeholder="Enter email"
-//           placeholderTextColor={colors.textSecondary}
-//         />
-//       </View>
-
-//       <View style={styles.inputGroup}>
-//         <Text style={styles.label}>Phone Number</Text>
-//         <TextInput
-//           value={phone}
-//           onChangeText={setPhone}
-//           style={styles.input}
-//           keyboardType="phone-pad"
-//           placeholder="Enter phone number"
-//           placeholderTextColor={colors.textSecondary}
-//         />
-//       </View>
-
-//       {!isEdit && (
-//         <View style={styles.inputGroup}>
-//           <Text style={styles.label}>Password*</Text>
-//           <TextInput
-//             value={password}
-//             onChangeText={setPassword}
-//             style={styles.input}
-//             secureTextEntry
-//             placeholder="Create password"
-//             placeholderTextColor={colors.textSecondary}
-//           />
-//         </View>
-//       )}
-
-//       <View style={styles.btnRow}>
-//         <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} disabled={loading}>
-//           <Text style={styles.cancelText}>Cancel</Text>
-//         </TouchableOpacity>
-
-//         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
-//           <Text style={styles.saveText}>{isEdit ? 'Update & Save' : 'Add Customer'}</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </SafeAreaView>
-//   );
-// };
-
-// export default CustomerFormScreen;
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 20 },
-//   content: { paddingVertical: 24 },
-//   title: { fontSize: 20, color: colors.accentGold, fontWeight: '700' },
-//   subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: 20 },
-//   inputGroup: { marginBottom: 16 },
-//   label: { color: colors.textPrimary, fontWeight: '600', marginBottom: 6 },
-//   input: {
-//     backgroundColor: colors.inputBg,
-//     borderRadius: 8,
-//     paddingHorizontal: 12,
-//     paddingVertical: 10,
-//     color: colors.textPrimary,
-//     borderWidth: 1,
-//     borderColor: colors.border,
-//   },
-//   btnRow: { flexDirection: 'row', marginTop: 20 },
-//   cancelBtn: {
-//     width: widthPercentageToDP(20),
-//     borderRadius: 8,
-//     paddingVertical: 12,
-//     alignItems: 'center',
-//     marginRight: 10,
-//     borderWidth: 1,
-//     borderColor: colors.textPrimary,
-//   },
-//   saveBtn: {
-//     width: widthPercentageToDP(40),
-//     backgroundColor: colors.accentGold,
-//     borderRadius: 8,
-//     paddingVertical: 12,
-//     alignItems: 'center',
-//     marginLeft: 10,
-//   },
-//   cancelText: { color: colors.textPrimary, fontWeight: '600' },
-//   saveText: { color: colors.textPrimary, fontWeight: '700' },
-// });
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -220,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import colors from '../constans/Color';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -235,7 +21,7 @@ const CustomerFormScreen = ({ route, navigation }) => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState(''); // add only
+  const [password, setPassword] = useState('');
   const [userToken, setUserToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -262,7 +48,6 @@ const CustomerFormScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (isEdit && customerData) {
-      // ensure correct mapping from payload
       setFirstName(customerData?.firstName || '');
       setLastName(customerData?.lastName || '');
       setEmail(customerData?.email || '');
@@ -316,16 +101,13 @@ const CustomerFormScreen = ({ route, navigation }) => {
 
     try {
       setLoading(true);
-
       const urlBase = `${API_ENDPOINTS.BASE_URL}/api/app/agent/customers`;
       const headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         Authorization: `Bearer ${userToken}`,
       };
-
       const body = { firstName, lastName, email, phone };
-
       if (isEdit) {
         // UPDATE
         const res = await fetch(`${urlBase}/${customerData._id}`, {
@@ -349,7 +131,7 @@ const CustomerFormScreen = ({ route, navigation }) => {
       }
       navigation.navigate('HomeMain');
     } catch (err) {
-      console.log('Save error:', err.message);
+      console.log('Save error:', err.response);
     } finally {
       setLoading(false);
     }
@@ -471,13 +253,17 @@ const CustomerFormScreen = ({ route, navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.saveBtn}
+          style={[styles.saveBtn, loading && { opacity: 0.6 }]}
           onPress={handleSave}
           disabled={loading}
         >
-          <Text style={styles.saveText}>
-            {isEdit ? 'Update & Save' : 'Add Customer'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveText}>
+              {isEdit ? 'Update & Save' : 'Add Customer'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
