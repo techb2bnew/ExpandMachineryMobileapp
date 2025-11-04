@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AccountScreen from '../screens/AccountScreen';
 import PersonalInformationScreen from '../screens/PersonalInformationScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ReportAndIssueScreen from '../screens/ReportAndIssueScreen';
 import AuthStack from './AuthStack';
 
 const Stack = createNativeStackNavigator();
@@ -13,6 +14,7 @@ export default function AccountStack() {
       <Stack.Screen name="AccountMain" component={AccountScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ gestureEnabled: false }}/>
+      <Stack.Screen name="ReportAndIssue" component={ReportAndIssueScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="Auth" component={AuthStack} options={{ gestureEnabled: false }}/>
     </Stack.Navigator>
   );

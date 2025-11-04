@@ -168,7 +168,6 @@ const PersonalInformationScreen = ({ navigation }) => {
         memberSince: updatedMemberSince || prev.memberSince,
         totalSupportTickets: customer?.totalSupportTickets ?? prev.totalSupportTickets,
         registeredMachines: customer?.machinesOwned ?? customer?.machines ?? prev.registeredMachines,
-        profileImage: customer?.profileImage ?? prev.profileImage,
         createdAt: customer?.createdAt || prev.createdAt,
       }));
 
@@ -244,7 +243,6 @@ const PersonalInformationScreen = ({ navigation }) => {
           memberSince: updatedMemberSince || userData.memberSince,
           totalSupportTickets: customer?.totalSupportTickets ?? userData.totalSupportTickets,
           registeredMachines: customer?.machinesOwned ?? customer?.machines ?? userData.registeredMachines,
-          profileImage: customer?.profileImage ?? userData.profileImage,
           createdAt: customer?.createdAt || userData.createdAt,
         };
 
@@ -507,7 +505,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: wp(22),
-    height: hp(11),
+    height: Platform.OS === "ios" ? hp(10.5) : hp(11),
     borderRadius: 40,
     backgroundColor: lightPinkAccent,
     marginBottom: spacings.large,

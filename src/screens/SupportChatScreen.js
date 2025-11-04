@@ -28,9 +28,11 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
   widthPercentageToDP,
+  fetchWithAuth,
 } from '../utils';
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_ENDPOINTS } from '../constans/Constants';
 
 const {
   flex,
@@ -42,24 +44,18 @@ const {
 
 const SupportChatScreen = ({ navigation, route }) => {
   const {
+    ticketId,
     ticketNumber,
     supportType,
     equipmentData,
     description,
     attachedImages,
-  } = route.params;
-  console.log(
-    'supportTypeequipmentData description,attachedImages,',
-    supportType,
-    equipmentData,
-    description,
-    attachedImages,
-  );
+  } = route.params || {};
 
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: `Welcome! I see you've submitted ticket ${ticketNumber}. How can I help you today?`,
+      text: `Welcome! I see you've submitted ticket ${ticketNumber || 'N/A'}. How can I help you today?`,
       isUser: false,
       timestamp: new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -70,6 +66,36 @@ const SupportChatScreen = ({ navigation, route }) => {
   const [inputText, setInputText] = useState('');
   const [isOnline, setIsOnline] = useState(true);
   const flatListRef = useRef(null);
+  const [ticketDetails, setTicketDetails] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  // Fetch ticket details on mount
+  useEffect(() => {
+    if (ticketId) {
+      console.log('Fetching details for ticket ID:', ticketId);
+      
+      fetchTicketDetails();
+    }
+  }, [ticketId]);
+
+  const fetchTicketDetails = async () => {
+    if (!ticketId || isLoadingDetails) return;
+
+    try {
+      setIsLoadingDetails(true);
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${ticketId}/details?page=1&limit=20`;
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      const data = await response.json();
+
+      if (response.ok && data?.success && data?.data?.ticket) {
+        setTicketDetails(data.data.ticket);
+      }
+    } catch (error) {
+      console.log('Ticket details fetch error:', error);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   useEffect(() => {
     // Auto scroll to bottom when new messages arrive
@@ -158,10 +184,14 @@ const SupportChatScreen = ({ navigation, route }) => {
             <Icon name="arrow-back" size={24} color={whiteColor} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>Support Chat</Text>
-            <Text style={styles.ticketNumber}>Ticket #{ticketNumber}</Text>
+            <Text style={styles.headerTitle}>
+              {ticketDetails?.categoryId?.name || supportType || 'Support Chat'}
+            </Text>
+            <Text style={styles.ticketNumber}>
+              Ticket #{ticketDetails?.ticketNumber || ticketNumber || 'N/A'}
+            </Text>
           </View>
-          <View
+          {/* <View
             style={[styles.onlineStatus, flexDirectionRow, alignItemsCenter]}
           >
             <View
@@ -171,51 +201,89 @@ const SupportChatScreen = ({ navigation, route }) => {
               ]}
             />
             <Text style={styles.onlineText}>Online</Text>
-          </View>
+          </View> */}
         </View>
       </View>
-      <View style={styles.detailsCard}>
-        <View
-          style={[
-            styles.statusRow,
-            flexDirectionRow,
-            alignItemsCenter,
-            justifyContentSpaceBetween,
-          ]}
-        >
-          {' '}
-          supportType, equipmentData, description,
+      {isLoadingDetails ? (
+        <View style={[styles.detailsCard, alignJustifyCenter]}>
+          <Text style={styles.loadingText}>Loading ticket details...</Text>
+        </View>
+      ) : ticketDetails ? (
+        <View style={styles.detailsCard}>
           <View style={styles.detailsGrid}>
-            .
+            {/* Category */}
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Support Type:</Text>
-              <Text style={styles.detailValue}>{supportType}</Text>
+              <Text style={styles.detailLabel}>Category</Text>
+              <Text style={styles.detailValue}>
+                {ticketDetails?.categoryId?.name || 'N/A'}
+              </Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Model:</Text>
-              <Text style={styles.detailValue}>{equipmentData?.model}</Text>
+
+            {/* Equipment details - only show if equipmentId exists */}
+            {ticketDetails?.equipmentId && (
+              <>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Equipment Name</Text>
+                  <Text style={styles.detailValue}>
+                    {ticketDetails.equipmentId.name || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Serial Number</Text>
+                  <Text style={styles.detailValue}>
+                    {ticketDetails.equipmentId.serialNumber || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Model Number</Text>
+                  <Text style={styles.detailValue}>
+                    {ticketDetails.equipmentId.modelNumber || 'N/A'}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+          <View style={styles.descriptionSection}>
+            <Text style={styles.sectionLabel}>Description</Text>
+            <View style={styles.descriptionBox}>
+              <Text style={styles.descriptionText} numberOfLines={3}>
+                {ticketDetails?.description || description || 'No description provided'}
+              </Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Serial:</Text>
-              <Text style={styles.detailValue}>{equipmentData?.serial}</Text>
-            </View>
-            {/* <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Category:</Text>
-              <Text style={styles.detailValue}>{'ticketData.category'}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Created:</Text>
-              <Text style={styles.detailValue}>{'ticketData.createdDate'}</Text>
-            </View> */}
           </View>
         </View>
-        <View style={styles.descriptionSection}>
-          <Text style={styles.sectionLabel}>Description</Text>
-          <View style={styles.descriptionBox}>
-            <Text style={styles.descriptionText}>{description}</Text>
+      ) : (
+        <View style={styles.detailsCard}>
+          <View style={styles.detailsGrid}>
+            {supportType && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Support Type</Text>
+                <Text style={styles.detailValue}>{supportType}</Text>
+              </View>
+            )}
+            {equipmentData?.model && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Model</Text>
+                <Text style={styles.detailValue}>{equipmentData.model}</Text>
+              </View>
+            )}
+            {equipmentData?.serial && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Serial</Text>
+                <Text style={styles.detailValue}>{equipmentData.serial}</Text>
+              </View>
+            )}
           </View>
+          {description && (
+            <View style={styles.descriptionSection}>
+              <Text style={styles.sectionLabel}>Description</Text>
+              <View style={styles.descriptionBox}>
+                <Text style={styles.descriptionText}>{description}</Text>
+              </View>
+            </View>
+          )}
         </View>
-      </View>
+      )}
 
       <Text style={styles.conversationTitle}>Conversation</Text>
       <View style={{ borderTopWidth: 1, borderTopColor: grayColor }}></View>
@@ -298,7 +366,7 @@ const styles = StyleSheet.create({
   ticketNumber: {
     ...style.fontSizeSmall1x,
     ...style.fontWeightThin,
-    color: grayColor,
+    color: whiteColor,
     marginTop: 2,
   },
   onlineStatus: {
@@ -465,6 +533,7 @@ const styles = StyleSheet.create({
     backgroundColor: lightColor,
     borderRadius: 8,
     padding: spacings.medium,
+    maxHeight: hp(15),
   },
   descriptionText: {
     ...style.fontSizeNormal,
@@ -478,6 +547,11 @@ const styles = StyleSheet.create({
     color: whiteColor,
     marginLeft: spacings.medium,
     marginBottom: spacings.medium,
+  },
+  loadingText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightThin,
+    color: whiteColor,
   },
 });
 

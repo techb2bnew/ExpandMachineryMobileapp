@@ -105,12 +105,12 @@ const AccountScreen = ({ navigation }) => {
     },
     {
       id: 3,
-      title: 'Report an Issue',
-      subtitle: 'Submit feedback',
+      title: 'Report and Issue',
+      subtitle: 'Submit a report or issue',
       icon: 'warning-outline',
       iconColor: redColor,
       iconType: Ionicons,
-      onPress: () => navigation.navigate('HomeTab', { screen: 'HomeMain' }),
+      onPress: () => navigation.navigate('ReportAndIssue'),
     },
     {
       id: 4,
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: wp(22),
-    height: Platform.OS === "ios" ? hp(10) : hp(11),
+    height: Platform.OS === "ios" ? hp(10.5) : hp(11),
     borderRadius: 50,
     backgroundColor: lightPinkAccent,
   },

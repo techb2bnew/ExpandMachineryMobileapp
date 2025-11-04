@@ -619,7 +619,8 @@
 // });
 
 // InboxScreen.js
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   StyleSheet,
   Text,
@@ -742,7 +743,7 @@ const InboxScreen = ({ navigation }) => {
 
   const getStatusColor = status => {
     const statusLower = (status || '').toLowerCase();
-    
+
     switch (statusLower) {
       case 'pending':
         return greenColor;
@@ -835,14 +836,20 @@ const InboxScreen = ({ navigation }) => {
     return items.map((c) => {
       const isUnread = c?.isRead === false;
       // Basic timestamp formatting (fallback to empty)
-      const ts = c?.lastMessageTime || null;
+      let displayTime = null;
+      if (c?.lastMessageTime) {
+        displayTime = c.lastMessageTime;
+      } else if (c?.createdAt) {
+        // Fallback to createdAt if lastMessageTime is not available
+        displayTime = formatDate(c.createdAt);
+      }
       return {
         id: c?._id || String(Math.random()),
         ticketId: c?._id,
-        title: c?.ticketNumber ? `Ticket ${c.ticketNumber}` : (c?.ticketNumber || 'Ticket'),
+        title: c?.title,
         sender: 'Expand Support Team',
         message: c?.description || '',
-        timestamp: ts ? '' : '',
+        timestamp: displayTime || '',
         isUnread,
         iconColor: isUnread ? lightPinkAccent : 'transparent',
         status: c?.status || 'pending',
@@ -919,6 +926,7 @@ const InboxScreen = ({ navigation }) => {
       const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox?${qs}`;
       const response = await fetchWithAuth(url, { method: 'GET' });
       const data = await response.json();
+      console.log('data', data);
 
       if (response.ok && data?.success) {
         const conv = data?.data?.conversations || [];
@@ -942,6 +950,14 @@ const InboxScreen = ({ navigation }) => {
       setIsRefreshing(false);
     }
   };
+
+  // Load data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadInbox(true, false);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   useEffect(() => {
     // When tab or search changes, soft refresh (background loading, keep existing data visible)
@@ -1003,14 +1019,14 @@ const InboxScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.messageCard}
           activeOpacity={0.9}
-          // onPress={() => {
-          //   setTicket(item);
-          //   setShowTicketModal(true);
-          //   // Fetch ticket details when modal opens
-          //   if (item.ticketId) {
-          //     fetchTicketDetails(item.ticketId);
-          //   }
-          // }}
+        // onPress={() => {
+        //   setTicket(item);
+        //   setShowTicketModal(true);
+        //   // Fetch ticket details when modal opens
+        //   if (item.ticketId) {
+        //     fetchTicketDetails(item.ticketId);
+        //   }
+        // }}
         >
           <View style={styles.messageContent}>
             <View
@@ -1075,7 +1091,7 @@ const InboxScreen = ({ navigation }) => {
             </View>
             <View style={styles.messageTextContainer}>
               <Text style={styles.messageTitle}>{item.title}</Text>
-              <Text style={styles.messageSender}> Expand Support Team</Text>
+              <Text style={styles.messageSender}>Expand Support Team</Text>
               <Text style={styles.messagePreview} numberOfLines={2}>
                 {item.message}
               </Text>
@@ -1108,11 +1124,11 @@ const InboxScreen = ({ navigation }) => {
       >
         {item.label}
       </Text>
-      {!!item.badge && (
+      {/* {!!item.badge && (
         <View style={[styles.tabBadge, alignJustifyCenter]}>
           <Text style={styles.tabBadgeText}>{item.badge}</Text>
         </View>
-      )}
+      )} */}
     </TouchableOpacity>
   );
 
@@ -1123,6 +1139,7 @@ const InboxScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Support Inbox</Text>
+          <Text style={styles.headerSubtitle}>View and manage your support tickets</Text>
         </View>
 
         {/* Search Bar */}
@@ -1274,7 +1291,7 @@ const InboxScreen = ({ navigation }) => {
                     ]}
                   >
                     <Text style={styles.statusText}>
-                      {ticketDetails?.status || 'pending'}
+                      {ticketDetails?.status === "in_progress" ? 'InProgress' : 'Pending'}
                     </Text>
                   </View>
                   <Text style={styles.updatedDate}>
@@ -1339,17 +1356,26 @@ const InboxScreen = ({ navigation }) => {
                     </Text>
                   </View>
                 </View>
-
-                {/* Attachments */}
-                {ticketDetails?.attachments &&
-                  ticketDetails.attachments.length > 0 && (
-                    <View style={styles.attachmentsSection}>
-                      <Text style={styles.sectionLabel}>Attachments</Text>
-                      <Text style={styles.attachmentText}>
-                        {ticketDetails.attachments.length} attachment(s)
-                      </Text>
-                    </View>
-                  )}
+                {/* Chat Button */}
+                {/* <TouchableOpacity
+                  style={[styles.chatButton, flexDirectionRow, alignItemsCenter, alignJustifyCenter]}
+                  onPress={() => {
+                    setShowTicketModal(false);
+                    setTicketDetails(null);
+                    navigation.navigate('ChatTab', {
+                      screen: 'SupportChat',
+                      params: {
+                        ticketId: ticketDetails?._id,
+                        ticketNumber: ticketDetails?.ticketNumber,
+                        supportType: ticketDetails?.categoryId?.name || 'Support',
+                        description: ticketDetails?.description,
+                      },
+                    });
+                  }}
+                >
+                  <Icon name="chatbubbles-outline" size={20} color={whiteColor} />
+                  <Text style={styles.chatButtonText}>Chat</Text>
+                </TouchableOpacity> */}
               </ScrollView>
             ) : (
               <View style={styles.loadingContainer}>
@@ -1373,7 +1399,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: spacings.xxLarge,
-    paddingTop: spacings.xxLarge,
+    // paddingTop: spacings.large,
     paddingBottom: spacings.large,
     alignItems: 'center',
   },
@@ -1381,6 +1407,13 @@ const styles = StyleSheet.create({
     ...style.fontSizeLargeX,
     ...style.fontWeightThin1x,
     color: whiteColor,
+    marginBottom: spacings.small,
+  },
+  headerSubtitle: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightThin,
+    color: whiteColor,
+    opacity: 0.8,
   },
   searchBar: {
     flexDirection: 'row',
@@ -1457,7 +1490,7 @@ const styles = StyleSheet.create({
   messageContent: { flexDirection: 'row', alignItems: 'flex-start' },
   iconContainer: {
     width: wp(12),
-    height: hp(5.5),
+    height: hp(6),
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1466,7 +1499,7 @@ const styles = StyleSheet.create({
   messageTextContainer: { flex: 1 },
   messageTitle: {
     ...style.fontSizeNormal,
-    ...style.fontWeightThin,
+    ...style.fontWeightBold,
     color: whiteColor,
     marginBottom: spacings.small,
   },
@@ -1474,14 +1507,15 @@ const styles = StyleSheet.create({
     ...style.fontSizeSmall1x,
     ...style.fontWeightThin,
     color: whiteColor,
-    marginBottom: spacings.small,
+    opacity: 0.7,
   },
   messagePreview: {
     ...style.fontSizeNormal,
     ...style.fontWeightThin,
     color: whiteColor,
-    opacity: 0.8,
+    opacity: 0.9,
     lineHeight: 20,
+    marginTop: spacings.xsmall,
   },
   messageMeta: { alignItems: 'flex-end', marginLeft: spacings.medium },
   timestamp: {
@@ -1629,5 +1663,18 @@ const styles = StyleSheet.create({
     color: whiteColor,
     marginTop: spacings.small,
     opacity: 0.8,
+  },
+  chatButton: {
+    backgroundColor: lightPinkAccent,
+    borderRadius: 8,
+    padding: spacings.large,
+    marginTop: spacings.xLarge,
+    gap: spacings.small,
+  },
+  chatButtonText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightBold,
+    color: whiteColor,
+    marginLeft: spacings.small,
   },
 });

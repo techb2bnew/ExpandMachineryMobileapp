@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -65,6 +65,35 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
     navigation.navigate('HomeMain');
   };
 
+  const autoNavigateTimerRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
+
+  useEffect(() => {
+    // Auto navigate to Home after 10 seconds
+    autoNavigateTimerRef.current = setTimeout(() => {
+      if (!hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        handleSubmitAnother();
+      }
+    }, 10000); // 10 seconds
+
+    // Cleanup timer on unmount
+    return () => {
+      if (autoNavigateTimerRef.current) {
+        clearTimeout(autoNavigateTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // Override handleSubmitAnother to mark as navigated
+  const handleSubmitAnotherWithMark = () => {
+    if (autoNavigateTimerRef.current) {
+      clearTimeout(autoNavigateTimerRef.current);
+    }
+    hasNavigatedRef.current = true;
+    handleSubmitAnother();
+  };
+
   const handleCallSupport = () => {
     const phoneNumber = '1-800-EXPAND-1';
     Linking.openURL(`tel:${phoneNumber}`);
@@ -99,13 +128,13 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
         </View>
 
         {/* Start Chat Button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.chatButton, flexDirectionRow, alignItemsCenter]}
           onPress={handleStartChat}
         >
           <Icon name="chatbubble-outline" size={20} color={whiteColor} />
           <Text style={styles.chatButtonText}>Start Chat for this Ticket</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Ticket Details Card */}
         <View style={styles.detailsCard}>
@@ -240,7 +269,7 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
               flexDirectionRow,
               alignItemsCenter,
             ]}
-            onPress={handleSubmitAnother}
+            onPress={handleSubmitAnotherWithMark}
           >
             <Icon name="refresh-outline" size={20} color={whiteColor} />
             <Text style={styles.submitAnotherText}>Submit Another Request</Text>

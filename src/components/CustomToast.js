@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
-import { whiteColor, lightBlack } from '../constans/Color';
-import { style } from '../constans/Fonts';
+import { whiteColor, lightBlack, lightPinkAccent, grayColor, greenColor, redColor } from '../constans/Color';
+import { style, spacings } from '../constans/Fonts';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 class ToastManager {
   static instance = null;
@@ -56,32 +57,59 @@ class ToastManager {
 const CustomToast = () => {
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState({});
-  const [fadeAnim] = useState(new Animated.Value(0));
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     const listener = {
       onShow: (newConfig) => {
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
         setConfig(newConfig);
         setVisible(true);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
 
-        // Auto hide after visibility time
-        if (newConfig.visibilityTime) {
-          setTimeout(() => {
-            ToastManager.hide();
-          }, newConfig.visibilityTime);
-        }
+        // Slide in animation
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+        ]).start();
+
+        // Auto hide after visibility time (default 3 seconds)
+        const visibilityTime = newConfig.visibilityTime || 3000;
+        timeoutRef.current = setTimeout(() => {
+          ToastManager.hide();
+        }, visibilityTime);
       },
       onHide: () => {
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: -100,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
           setVisible(false);
         });
       },
@@ -91,8 +119,11 @@ const CustomToast = () => {
 
     return () => {
       ToastManager.removeListener(listener);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  }, [fadeAnim]);
+  }, [fadeAnim, slideAnim]);
 
   if (!visible) return null;
 
@@ -112,33 +143,63 @@ const CustomToast = () => {
   const getIconColor = () => {
     switch (config.type) {
       case 'success':
-        return '#4CAF50';
+        return greenColor;
       case 'error':
-        return '#F44336';
+        return redColor;
       case 'info':
         return '#2196F3';
       default:
-        return '#757575';
+        return grayColor;
     }
   };
 
+  const getIconName = () => {
+    switch (config.type) {
+      case 'success':
+        return 'checkmark-circle';
+      case 'error':
+        return 'close-circle';
+      case 'info':
+        return 'information-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  // Support both formats: { message } and { text1, text2 }
+  const messageText = config.message || config.text1 || '';
+  const subtitleText = config.text2 || '';
+
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <View style={[styles.toast, getToastStyle()]}>
         <View style={[styles.iconContainer, { backgroundColor: getIconColor() }]}>
-          <Text style={styles.icon}>
-            {config.type === 'success' ? '✓' : config.type === 'error' ? '✕' : 'ℹ'}
-          </Text>
+          <Icon name={getIconName()} size={20} color={whiteColor} />
         </View>
         <View style={styles.textContainer}>
-          {config.text1 && <Text style={styles.title}>{config.text1}</Text>}
-          {config.text2 && <Text style={styles.message}>{config.text2}</Text>}
+          <Text style={styles.message} numberOfLines={2}>
+            {messageText}
+          </Text>
+          {subtitleText ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitleText}
+            </Text>
+          ) : null}
         </View>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={() => ToastManager.hide()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.closeIcon}>×</Text>
+          <Icon name="close" size={18} color={whiteColor} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -148,76 +209,71 @@ const CustomToast = () => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
-    left: 20,
-    right: 20,
+    top: Platform.OS === 'ios' ? hp(8) : hp(6),
+    left: wp(4),
+    right: wp(4),
     zIndex: 9999,
+    alignItems: 'center',
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: lightBlack,
+    backgroundColor: '#2C2C2E',
     borderRadius: 10,
-    padding: 15,
+    paddingVertical: spacings.medium,
+    paddingHorizontal: spacings.large,
+    minHeight: hp(5.5),
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 10,
   },
   successToast: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    backgroundColor: '#2C2C2E',
   },
   errorToast: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#F44336',
+    backgroundColor: '#2C2C2E',
   },
   infoToast: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    backgroundColor: '#2C2C2E',
   },
   defaultToast: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#757575',
+    backgroundColor: '#2C2C2E',
   },
   iconContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: wp(10),
+    height: wp(10),
+    borderRadius: wp(5),
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  icon: {
-    color: whiteColor,
-    fontSize: 16,
-    fontWeight: 'bold',
+    marginRight: spacings.medium,
   },
   textContainer: {
     flex: 1,
-  },
-  title: {
-    ...style.fontSizeNormal,
-    color: whiteColor,
-    fontWeight: 'bold',
-    marginBottom: 2,
+    justifyContent: 'center',
   },
   message: {
-    ...style.fontSizeSmall2x,
+    ...style.fontSizeNormal,
+    ...style.fontWeightMedium,
     color: whiteColor,
-    opacity: 0.9,
+    lineHeight: 20,
+  },
+  subtitle: {
+    ...style.fontSizeSmall1x,
+    ...style.fontWeightThin,
+    color: whiteColor,
+    opacity: 0.8,
+    marginTop: spacings.xsmall,
   },
   closeButton: {
-    padding: 5,
-  },
-  closeIcon: {
-    color: whiteColor,
-    fontSize: 20,
-    fontWeight: 'bold',
+    padding: spacings.small,
+    marginLeft: spacings.small,
+    opacity: 0.7,
   },
 });
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeStack from './HomeStack';
 import InboxStack from './InboxStack';
+import ChatStack from './ChatStack';
 import NotificationsStack from './NotificationsStack';
 import AccountStack from './AccountStack';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -98,6 +99,8 @@ export default function BottomTabs() {
               (iconName = 'home'), (iconType = Feather);
             if (route.name === 'InboxTab')
               (iconName = 'inbox'), (iconType = Feather);
+            if (route.name === 'ChatTab')
+              (iconName = 'chatbubbles-outline'), (iconType = Icon);
             if (route.name === 'NotificationsTab') {
               (iconName = 'notifications-outline'), (iconType = Icon);
               badge = 2;
@@ -118,6 +121,7 @@ export default function BottomTabs() {
             let label;
             if (route.name === 'HomeTab') label = 'Home';
             if (route.name === 'InboxTab') label = 'Inbox';
+            if (route.name === 'ChatTab') label = 'Chat';
             if (route.name === 'NotificationsTab') label = 'Notifications';
             if (route.name === 'AccountTab') label = 'Account';
 
@@ -140,7 +144,16 @@ export default function BottomTabs() {
         component={InboxStack}
         listeners={({ navigation }) => ({
           tabPress: e => {
-            navigation.navigate('InboxTab', { screen: 'InboxScreen' });
+            navigation.navigate('InboxTab', { screen: 'InboxMain' });
+          },
+        })}
+      />
+      <Tab.Screen
+        name="ChatTab"
+        component={ChatStack}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            navigation.navigate('ChatTab', { screen: 'ChatList' });
           },
         })}
       />
