@@ -51,13 +51,20 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
   const displayAttachments = attachments || attachedImages || [];
 
   const handleStartChat = () => {
-    console.log('Start chat for ticket:', ticketNumber);
+    console.log('Start chat for ticket:', ticketData);
+    // Clear auto-navigation timer when user clicks chat
+    if (autoNavigateTimerRef.current) {
+      clearTimeout(autoNavigateTimerRef.current);
+    }
+    hasNavigatedRef.current = true;
+    // Navigate to chat screen
     navigation.navigate('SupportChat', {
       ticketNumber,
       supportType,
       equipmentData,
       description,
       attachedImages: displayAttachments,
+      ticketId: ticketData?._id || ticketData?.ticketId,
     });
   };
 
@@ -128,13 +135,13 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
         </View>
 
         {/* Start Chat Button */}
-        {/* <TouchableOpacity
+        <TouchableOpacity
           style={[styles.chatButton, flexDirectionRow, alignItemsCenter]}
           onPress={handleStartChat}
         >
           <Icon name="chatbubble-outline" size={20} color={whiteColor} />
           <Text style={styles.chatButtonText}>Start Chat for this Ticket</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
 
         {/* Ticket Details Card */}
         <View style={styles.detailsCard}>

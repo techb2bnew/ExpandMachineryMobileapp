@@ -40,6 +40,8 @@ import {
 import { APP_LOGO } from '../assests/images';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { connectSocket, getSocket } from '../socket/socket';
+
 const { flex, alignJustifyCenter } = BaseStyle;
 
 const LoginScreen = ({ navigation }) => {
@@ -118,6 +120,22 @@ const LoginScreen = ({ navigation }) => {
         }
         await AsyncStorage.setItem('userData', JSON.stringify(data?.data?.customer));
         await AsyncStorage.setItem('userRole', JSON.stringify(data?.data?.customer?.role));
+        // ✅ Connect socket with token
+        const socket = connectSocket(data?.data?.token);
+        const user = data?.data?.customer;
+
+        // ✅ Emit user_online event
+        socket.emit('user_online', {
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.name,
+          role: user.role,
+        });
+
+        // Optional listener
+        socket.on('welcome', (res) => {
+          console.log('✅ Socket Connected:', res);
+        });
 
         navigation.reset({
           index: 0,
@@ -190,6 +208,19 @@ const LoginScreen = ({ navigation }) => {
             onRightIconPress={() => setShowPassword(!showPassword)}
             error={passwordError}
           />
+     {serverError ? (
+            <Text style={styles.errorText}>{serverError}</Text>
+          ) : null}
+          {/* Forgot Password */}
+          <TouchableOpacity
+            style={styles.forgotPasswordContainer}
+            onPress={() => {
+              navigation.navigate('ForgotPassword');
+            }}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
           {/* <TouchableOpacity
             style={[styles.checkboxContainer]}
             activeOpacity={0.8}
@@ -202,9 +233,7 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.checkboxText}>Stay signed In</Text>
           </TouchableOpacity> */}
 
-          {serverError ? (
-            <Text style={styles.errorText}>{serverError}</Text>
-          ) : null}
+     
 
           <CustomButton
             title={SIGN_IN}
@@ -271,6 +300,16 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: whiteColor,
     fontSize: 16,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginTop: spacings.small,
+    marginBottom: spacings.medium,
+  },
+  forgotPasswordText: {
+    color: whiteColor,
+    fontSize: style.fontSizeNormal.fontSize,
+    fontWeight: style.fontWeightMedium.fontWeight,
   },
   errorText: {
     color: redColor,

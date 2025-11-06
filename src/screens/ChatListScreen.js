@@ -7,8 +7,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
-    Modal,
-    Pressable,
     TextInput,
     Platform,
 } from 'react-native';
@@ -42,7 +40,6 @@ const ChatListScreen = ({ navigation }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [showNoAgentModal, setShowNoAgentModal] = useState(false);
     const [searchText, setSearchText] = useState('');
 
     const formatDate = (dateString) => {
@@ -59,28 +56,64 @@ const ChatListScreen = ({ navigation }) => {
         }
     };
 
+    const formatTime = (dateString) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+        } catch (error) {
+            return '';
+        }
+    };
+
     const mapConversations = (conversations = []) => {
         return conversations.map((conv) => {
-            // Check if lastMessageTime is a text (like "1 hr ago") or a date
+            // Extract ticket info from ticketId object
+            const ticketIdObj = conv?.ticketId || {};
+            const ticketId = ticketIdObj?._id || conv?._id;
+
+            // Extract agent from participants array
+            const agentParticipant = conv?.participants?.find(
+                p => p?.userType === 'agent'
+            ) || null;
+
+            // Format lastMessageAt time
             let displayTime = null;
-            if (conv?.lastMessageTime) {
-                displayTime = conv.lastMessageTime;
+            if (conv?.lastMessageAt) {
+                displayTime = formatTime(conv.lastMessageAt);
             } else if (conv?.createdAt) {
-                // Fallback to createdAt if lastMessageTime is not available
-                displayTime = formatDate(conv.createdAt);
+                displayTime = formatTime(conv.createdAt);
             }
+
+            // Check read status from lastMessageRead field
+            const isRead = conv?.lastMessageRead === true;
 
             return {
                 id: conv?._id,
-                ticketId: conv?._id,
-                title: conv?.title,
-                ticketNumber: conv?.ticketNumber || 'N/A',
-                description: conv?.description || '',
-                lastMessage: conv?.lastMessage || conv?.latestMessage || conv?.description || '',
+                ticketId: ticketId, // Use ticketId._id for navigation
+                title: ticketIdObj?.description || 'Support Ticket',
+                ticketNumber: ticketIdObj?.ticketNumber || 'N/A',
+                description: ticketIdObj?.description || '',
+                lastMessage: conv?.lastMessage || '',
                 lastMessageTime: displayTime,
-                isRead: conv?.isRead || false,
-                status: conv?.status || 'pending',
-                assignedAgent: conv?.assignedAgent || null,
+                isRead: isRead, // true if lastMessageRead is true, false otherwise
+                status: ticketIdObj?.status || 'pending',
+                assignedAgent: agentParticipant ? {
+                    _id: agentParticipant.userId,
+                    name: agentParticipant.userName,
+                    email: agentParticipant.userEmail,
+                } : null,
+                messageId: conv?.messageId || null, // Include messageId for read API
             };
         });
     };
@@ -90,7 +123,6 @@ const ChatListScreen = ({ navigation }) => {
         const params = new URLSearchParams({
             page: String(currentPage),
             limit: '10',
-            filter: 'all',
         });
         if (searchText.trim()) {
             params.append('search', searchText.trim());
@@ -118,13 +150,15 @@ const ChatListScreen = ({ navigation }) => {
             }
 
             const qs = buildQuery(reset);
-            const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox?${qs}`;
+            const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/list?${qs}`;
             const response = await fetchWithAuth(url, { method: 'GET' });
             const data = await response.json();
+            console.log('datachat list:::::::', data);
 
             if (response.ok && data?.success) {
-                const conv = data?.data?.conversations || [];
-                const pagination = data?.data?.pagination || {};
+                // New API returns array directly in data, not wrapped in conversations
+                const conv = Array.isArray(data?.data) ? data.data : [];
+                const pagination = data?.pagination || {};
                 const nextItems = mapConversations(conv);
 
                 if (reset) {
@@ -143,6 +177,47 @@ const ChatListScreen = ({ navigation }) => {
         }
     }, [page, isLoading, searchText, chats.length]);
 
+    // Mark ticket/message as read
+    const markAsRead = async (chat) => {
+        // Only mark as read if it's unread
+        if (chat?.isRead) return;
+
+        try {
+            // Use messageId directly from chat object
+            if (chat?.messageId) {
+                const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${chat.messageId}/read`;
+                console.log('url:::::::', url);
+
+                const response = await fetchWithAuth(url, { method: 'PUT' });
+                const data = await response.json();
+                console.log('data:::::::', data);
+
+                if (response.ok && data?.success) {
+                    // Refresh data to get updated read status from API
+                    loadChats(true, false);
+                } else {
+                    console.log('Failed to mark as read:', data?.message || 'Unknown error');
+                }
+            } else if (chat?.ticketId) {
+                // Fallback: if no message ID, use ticket read API
+                const url = `${API_ENDPOINTS.BASE_URL}/api/app/tickets/${chat.ticketId}/read`;
+                console.log('url (ticket):::::::', url);
+
+                const response = await fetchWithAuth(url, { method: 'PUT' });
+                const data = await response.json();
+
+                if (response.ok && data?.success) {
+                    // Refresh data to get updated read status from API
+                    loadChats(true, false);
+                } else {
+                    console.log('Failed to mark as read:', data?.message || 'Unknown error');
+                }
+            }
+        } catch (error) {
+            console.log('Mark as read error:', error);
+        }
+    };
+
     // Filter chats based on search text
     const filteredChats = useMemo(() => {
         if (!searchText.trim()) {
@@ -153,9 +228,9 @@ const ChatListScreen = ({ navigation }) => {
             const ticketNumber = chat.ticketNumber?.toLowerCase() || '';
             const agentName = chat.assignedAgent?.name?.toLowerCase() || '';
             const description = chat.description?.toLowerCase() || '';
-            return ticketNumber.includes(searchLower) || 
-                   agentName.includes(searchLower) || 
-                   description.includes(searchLower);
+            return ticketNumber.includes(searchLower) ||
+                agentName.includes(searchLower) ||
+                description.includes(searchLower);
         });
     }, [chats, searchText]);
 
@@ -192,39 +267,18 @@ const ChatListScreen = ({ navigation }) => {
         }, [])
     );
 
-    const formatTime = (dateString) => {
-        if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-        } catch (error) {
-            return '';
-        }
-    };
-
     const handleChatPress = (chat) => {
         console.log('chat', chat);
-        // Check if agent is assigned
-        if (!chat.assignedAgent) {
-            setShowNoAgentModal(true);
-            return;
-        }
-        // Navigate to chat screen if agent is assigned
+        // Mark as read when chat is clicked
+        markAsRead(chat);
+        // Navigate to chat screen with all data
         navigation.navigate('SupportChat', {
             ticketId: chat.ticketId,
             ticketNumber: chat.ticketNumber,
             supportType: 'Support',
             description: chat.description,
+            status: chat.status,
+            title: chat.title,
         });
     };
 
@@ -241,7 +295,7 @@ const ChatListScreen = ({ navigation }) => {
                     <View
                         style={[
                             styles.iconContainer,
-                            { backgroundColor: isUnread ? lightPinkAccent : 'transparent' },
+                            { backgroundColor: lightPinkAccent, borderRadius: 100 },
                         ]}
                     >
                         <MaterialIcons name="message" size={20} color={whiteColor} />
@@ -252,7 +306,7 @@ const ChatListScreen = ({ navigation }) => {
                             <Text style={styles.chatTime}>{item.lastMessageTime}</Text>
                         </View>
                         <Text style={styles.chatSender}>
-                            {item.assignedAgent?.name || 'No agent assigned'}
+                            Expand Supoort Team                            {/* {item.assignedAgent?.name || 'No agent assigned'} */}
                         </Text>
 
                         {/* <Text style={styles.chatPreview} numberOfLines={2}>
@@ -332,29 +386,6 @@ const ChatListScreen = ({ navigation }) => {
                     )}
                 </View>
             </View>
-
-            {/* No Agent Assigned Modal */}
-            <Modal
-                visible={showNoAgentModal}
-                animationType="fade"
-                transparent
-                onRequestClose={() => setShowNoAgentModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Agent Not Assigned</Text>
-                        <Text style={styles.modalMessage}>
-                            No agent has been assigned to your ticket yet. Please wait for an agent to be assigned.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.modalCloseButton}
-                            onPress={() => setShowNoAgentModal(false)}
-                        >
-                            <Text style={styles.modalCloseButtonText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 };
@@ -434,7 +465,7 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         width: wp(12),
-        height: hp(6),
+    height: Platform.OS === 'ios' ? hp(5.5) : hp(6),
         borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',
@@ -497,48 +528,6 @@ const styles = StyleSheet.create({
         padding: spacings.large,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacings.xLarge,
-    },
-    modalContent: {
-        backgroundColor: lightBlack,
-        borderRadius: 12,
-        padding: spacings.xxLarge,
-        width: '100%',
-        maxWidth: wp(85),
-    },
-    modalTitle: {
-        ...style.fontSizeLargeX,
-        ...style.fontWeightBold,
-        color: whiteColor,
-        marginBottom: spacings.medium,
-        textAlign: 'center',
-    },
-    modalMessage: {
-        ...style.fontSizeNormal,
-        ...style.fontWeightThin,
-        color: whiteColor,
-        marginBottom: spacings.xLarge,
-        textAlign: 'center',
-        lineHeight: 22,
-    },
-    modalCloseButton: {
-        backgroundColor: lightPinkAccent,
-        borderRadius: 8,
-        padding: spacings.large,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modalCloseButtonText: {
-        ...style.fontSizeNormal,
-        ...style.fontWeightBold,
-        color: whiteColor,
     },
 });
 

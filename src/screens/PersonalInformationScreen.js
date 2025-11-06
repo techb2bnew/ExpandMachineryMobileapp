@@ -193,7 +193,8 @@ const PersonalInformationScreen = ({ navigation }) => {
   );
 
   const membershipDuration = calculateMembershipDuration(userData?.memberSince, userData?.createdAt);
-  const membershipText = `Member since ${userData?.memberSince || '2021'} (${membershipDuration?.value} ${membershipDuration?.label})`;
+  // const membershipText = `Member since ${userData?.memberSince || '2021'} (${membershipDuration?.value} ${membershipDuration?.label})`;
+  const membershipText = `Member since ${userData?.memberSince || '2021'}`;
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -505,8 +506,8 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: wp(22),
-    height: Platform.OS === "ios" ? hp(10.5) : hp(11),
-    borderRadius: 40,
+    height: Platform.OS === "ios" ? hp(10) : hp(11),
+    borderRadius: 50,
     backgroundColor: lightPinkAccent,
     marginBottom: spacings.large,
   },

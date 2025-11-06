@@ -851,8 +851,9 @@ const InboxScreen = ({ navigation }) => {
         message: c?.description || '',
         timestamp: displayTime || '',
         isUnread,
-        iconColor: isUnread ? lightPinkAccent : 'transparent',
+        iconColor: lightPinkAccent,
         status: c?.status || 'pending',
+        latestMessage: c?.latestMessage || null, // Include latestMessage for read API
       };
     });
   };
@@ -869,6 +870,45 @@ const InboxScreen = ({ navigation }) => {
       });
     } catch (error) {
       return '';
+    }
+  };
+
+  // Mark ticket/message as read
+  const markAsRead = async (item) => {
+    // Only mark as read if it's unread
+    if (!item?.isUnread) return;
+
+    try {
+      let url;
+
+      // Check if latestMessage exists
+      if (item?.latestMessage?._id) {
+        // Call message read API
+        url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${item.latestMessage._id}/read`;
+      } else if (item?.ticketId) {
+        // Call ticket read API
+        url = `${API_ENDPOINTS.BASE_URL}/api/app/tickets/${item.ticketId}/read`;
+      } else {
+        return; // No valid ID found
+      }
+
+      const response = await fetchWithAuth(url, { method: 'PUT' });
+      const data = await response.json();
+
+      if (response.ok && data?.success) {
+        // Update local state to mark as read
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === item.id
+              ? { ...msg, isUnread: false, iconColor: 'transparent' }
+              : msg
+          )
+        );
+      } else {
+        console.log('Failed to mark as read:', data?.message || 'Unknown error');
+      }
+    } catch (error) {
+      console.log('Mark as read error:', error);
     }
   };
 
@@ -1032,7 +1072,7 @@ const InboxScreen = ({ navigation }) => {
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: item.iconColor },
+                { backgroundColor: item.iconColor, borderRadius: 100 },
               ]}
             >
               <MaterialIcons name="message" size={20} color={whiteColor} />
@@ -1074,6 +1114,8 @@ const InboxScreen = ({ navigation }) => {
           onPress={() => {
             setTicket(item);
             setShowTicketModal(true);
+            // Mark as read when modal opens
+            markAsRead(item);
             // Fetch ticket details when modal opens
             if (item.ticketId) {
               fetchTicketDetails(item.ticketId);
@@ -1084,7 +1126,7 @@ const InboxScreen = ({ navigation }) => {
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: item.iconColor },
+                { backgroundColor: item.iconColor, borderRadius: 100 },
               ]}
             >
               <MaterialIcons name="message" size={20} color={whiteColor} />
@@ -1124,11 +1166,11 @@ const InboxScreen = ({ navigation }) => {
       >
         {item.label}
       </Text>
-      {/* {!!item.badge && (
+      {!!item.badge && (
         <View style={[styles.tabBadge, alignJustifyCenter]}>
           <Text style={styles.tabBadgeText}>{item.badge}</Text>
         </View>
-      )} */}
+      )}
     </TouchableOpacity>
   );
 
@@ -1490,7 +1532,7 @@ const styles = StyleSheet.create({
   messageContent: { flexDirection: 'row', alignItems: 'flex-start' },
   iconContainer: {
     width: wp(12),
-    height: hp(6),
+    height: Platform.OS === 'ios' ? hp(5.5) : hp(6),
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
