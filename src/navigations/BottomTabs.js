@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeStack from './HomeStack';
 import InboxStack from './InboxStack';
@@ -16,7 +16,10 @@ import {
   lightColor,
 } from '../constans/Color';
 import { spacings } from '../constans/Fonts';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUnreadCounts } from '../store/slices/unreadCountSlice';
+import { useCallback } from 'react';
 
 const Tab = createBottomTabNavigator();
 
@@ -59,6 +62,30 @@ function getRouteHiddenTabs(routeName) {
 }
 
 export default function BottomTabs() {
+  const dispatch = useDispatch();
+  const navigation = useNavigation();
+  // Get unread counts from Redux store
+  const inboxUnread = useSelector((state) => state.unreadCount.inboxUnread);
+  const chatUnread = useSelector((state) => state.unreadCount.chatUnread);
+
+  // Fetch counts whenever BottomTabs screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Fetch unread counts when tab bar comes into focus
+      dispatch(fetchUnreadCounts());
+    }, [dispatch])
+  );
+
+  // Listen to navigation state changes - fetch counts on any navigation
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state', () => {
+      // Fetch counts on any navigation state change
+      dispatch(fetchUnreadCounts());
+    });
+
+    return unsubscribe;
+  }, [navigation, dispatch]);
+
   return (
     <Tab.Navigator
     style={{backgroundColor:"red"}}
@@ -97,10 +124,16 @@ export default function BottomTabs() {
 
             if (route.name === 'HomeTab')
               (iconName = 'home'), (iconType = Feather);
-            if (route.name === 'InboxTab')
+            if (route.name === 'InboxTab') {
               (iconName = 'inbox'), (iconType = Feather);
-            if (route.name === 'ChatTab')
+              // Show inbox unread count badge
+              badge = inboxUnread > 0 ? inboxUnread : null;
+            }
+            if (route.name === 'ChatTab') {
               (iconName = 'chatbubbles-outline'), (iconType = Icon);
+              // Show chat unread count badge
+              badge = chatUnread > 0 ? chatUnread : null;
+            }
             if (route.name === 'NotificationsTab') {
               (iconName = 'notifications-outline'), (iconType = Icon);
               badge = 2;
@@ -144,6 +177,8 @@ export default function BottomTabs() {
         component={InboxStack}
         listeners={({ navigation }) => ({
           tabPress: e => {
+            // Fetch counts when inbox tab is pressed
+            dispatch(fetchUnreadCounts());
             navigation.navigate('InboxTab', { screen: 'InboxMain' });
           },
         })}
@@ -153,6 +188,8 @@ export default function BottomTabs() {
         component={ChatStack}
         listeners={({ navigation }) => ({
           tabPress: e => {
+            // Fetch counts when chat tab is pressed
+            dispatch(fetchUnreadCounts());
             navigation.navigate('ChatTab', { screen: 'ChatList' });
           },
         })}

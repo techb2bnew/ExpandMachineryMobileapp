@@ -621,6 +621,8 @@
 // InboxScreen.js
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { updateInboxUnreadCount, fetchUnreadCounts } from '../store/slices/unreadCountSlice';
 import {
   StyleSheet,
   Text,
@@ -695,6 +697,7 @@ const SmoothEase = {
 };
 
 const InboxScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('All');
   const [searchText, setSearchText] = useState('');
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -847,6 +850,7 @@ const InboxScreen = ({ navigation }) => {
         id: c?._id || String(Math.random()),
         ticketId: c?._id,
         title: c?.title,
+        categoryName: c?.categoryId?.name || "",
         sender: 'Expand Support Team',
         message: c?.description || '',
         timestamp: displayTime || '',
@@ -980,6 +984,10 @@ const InboxScreen = ({ navigation }) => {
           setMessages(prev => [...prev, ...nextItems]);
         }
         setTotalPages(pagination?.totalPages || 1);
+
+        // Update Redux store with unread count
+        const unreadCount = nextItems.filter(m => m.isUnread).length;
+        dispatch(updateInboxUnreadCount(unreadCount));
       } else {
         // non-ok handled by fetchWithAuth for auth errors; otherwise no-op
       }
@@ -994,9 +1002,12 @@ const InboxScreen = ({ navigation }) => {
   // Load data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      // Fetch counts when screen comes into focus
+      dispatch(fetchUnreadCounts());
+      // Load inbox data
       loadInbox(true, false);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [dispatch])
   );
 
   useEffect(() => {
@@ -1078,10 +1089,10 @@ const InboxScreen = ({ navigation }) => {
               <MaterialIcons name="message" size={20} color={whiteColor} />
             </View>
             <View style={styles.messageTextContainer}>
-              <Text style={styles.messageTitle}>{item.title}</Text>
-              <Text style={styles.messageSender}> Expand Support Team</Text>
+              <Text style={styles.messageTitle}>{item?.title}</Text>
+              <Text style={styles.messageSender}>Expand Support Team({item?.categoryName})</Text>
               <Text style={styles.messagePreview} numberOfLines={2}>
-                {item.message}
+                {item?.message}
               </Text>
             </View>
             <View style={styles.messageMeta}>
@@ -1133,7 +1144,7 @@ const InboxScreen = ({ navigation }) => {
             </View>
             <View style={styles.messageTextContainer}>
               <Text style={styles.messageTitle}>{item.title}</Text>
-              <Text style={styles.messageSender}>Expand Support Team</Text>
+              <Text style={styles.messageSender}>Expand Support Team({item?.categoryName})</Text>
               <Text style={styles.messagePreview} numberOfLines={2}>
                 {item.message}
               </Text>
@@ -1546,7 +1557,7 @@ const styles = StyleSheet.create({
     marginBottom: spacings.small,
   },
   messageSender: {
-    ...style.fontSizeSmall1x,
+    ...style.fontSizeSmall,
     ...style.fontWeightThin,
     color: whiteColor,
     opacity: 0.7,
@@ -1557,9 +1568,9 @@ const styles = StyleSheet.create({
     color: whiteColor,
     opacity: 0.9,
     lineHeight: 20,
-    marginTop: spacings.xsmall,
+    // marginTop: spacings.xsmall,
   },
-  messageMeta: { alignItems: 'flex-end', marginLeft: spacings.medium },
+  messageMeta: { alignItems: 'flex-end', marginLeft: spacings.small },
   timestamp: {
     ...style.fontSizeSmall1x,
     ...style.fontWeightThin,

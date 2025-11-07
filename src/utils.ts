@@ -120,6 +120,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}): Pro
   try {
     // Get token from AsyncStorage
     const token = await AsyncStorage.getItem('userToken');
+// console.log("token",token);
 
     // If no token and this is not a public endpoint, check if we should logout
     if (!token && !url.includes('/auth/login') && !url.includes('/auth/register')) {

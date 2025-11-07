@@ -12,6 +12,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
 import { Toast } from './src/components/CustomToast';
 import { connectSocket, disconnectSocket, getSocket } from './src/socket/socket';
+import { Provider } from 'react-redux';
+import { store } from './src/store/store';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -102,31 +104,33 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <View
-          style={{
-            width: widthPercentageToDP(100),
-            height: heightPercentageToDP(100),
-            backgroundColor: '#2F2F2F',
-          }}
-        >
-          <NavigationContainer
-            ref={(ref) => {
-              setNavigationRef(ref);
+    <Provider store={store}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <View
+            style={{
+              width: widthPercentageToDP(100),
+              height: heightPercentageToDP(100),
+              backgroundColor: '#2F2F2F',
             }}
           >
-            {isLoading ? (
-              <SplashScreen />
-            ) : userToken ? (
-              <MainStack />
-            ) : (
-              <AuthStack />
-            )}
-          </NavigationContainer>
-          <CustomToast />
-        </View>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+            <NavigationContainer
+              ref={(ref) => {
+                setNavigationRef(ref);
+              }}
+            >
+              {isLoading ? (
+                <SplashScreen />
+              ) : userToken ? (
+                <MainStack />
+              ) : (
+                <AuthStack />
+              )}
+            </NavigationContainer>
+            <CustomToast />
+          </View>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </Provider>
   );
 }

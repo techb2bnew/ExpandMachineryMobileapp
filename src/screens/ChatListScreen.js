@@ -13,6 +13,8 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
+import { updateChatUnreadCount, fetchUnreadCounts } from '../store/slices/unreadCountSlice';
 import {
     darkgrayColor,
     whiteColor,
@@ -35,6 +37,7 @@ import { useFocusEffect } from '@react-navigation/native';
 const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
 
 const ChatListScreen = ({ navigation }) => {
+    const dispatch = useDispatch();
     const [chats, setChats] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -108,6 +111,7 @@ const ChatListScreen = ({ navigation }) => {
                 lastMessageTime: displayTime,
                 isRead: isRead, // true if lastMessageRead is true, false otherwise
                 status: ticketIdObj?.status || 'pending',
+                categoryName: ticketIdObj?.categoryId?.name || 'Applications',
                 assignedAgent: agentParticipant ? {
                     _id: agentParticipant.userId,
                     name: agentParticipant.userName,
@@ -168,6 +172,10 @@ const ChatListScreen = ({ navigation }) => {
                     setChats(prev => [...prev, ...nextItems]);
                 }
                 setTotalPages(pagination?.totalPages || 1);
+
+                // Update Redux store with unread count
+                const unreadCount = nextItems.filter(c => !c.isRead).length;
+                dispatch(updateChatUnreadCount(unreadCount));
             }
         } catch (error) {
             console.log('Chat list fetch error:', error);
@@ -262,9 +270,12 @@ const ChatListScreen = ({ navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
+            // Fetch counts when screen comes into focus
+            dispatch(fetchUnreadCounts());
+            // Load chat data
             loadChats(true, false);
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [])
+        }, [dispatch])
     );
 
     const handleChatPress = (chat) => {
@@ -306,7 +317,8 @@ const ChatListScreen = ({ navigation }) => {
                             <Text style={styles.chatTime}>{item.lastMessageTime}</Text>
                         </View>
                         <Text style={styles.chatSender}>
-                            Expand Supoort Team                            {/* {item.assignedAgent?.name || 'No agent assigned'} */}
+                            Expand Support Team ({item?.categoryName})
+                            {/* {item.assignedAgent?.name || 'No agent assigned'} */}
                         </Text>
 
                         {/* <Text style={styles.chatPreview} numberOfLines={2}>
