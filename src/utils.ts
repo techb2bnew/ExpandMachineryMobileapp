@@ -83,7 +83,7 @@ const performGlobalLogout = async (): Promise<void> => {
     
     // Clear all stored data
     await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
-    console.log('Global logout: User logged out due to auth error');
+    // console.log('Global logout: User logged out due to auth error');
     
     // Navigate to Login screen using global navigation ref
     if (globalNavigationRef?.isReady()) {
@@ -120,10 +120,11 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}): Pro
   try {
     // Get token from AsyncStorage
     const token = await AsyncStorage.getItem('userToken');
+console.log("token",token);
 
     // If no token and this is not a public endpoint, check if we should logout
     if (!token && !url.includes('/auth/login') && !url.includes('/auth/register')) {
-      console.log('No token found - redirecting to login');
+      // console.log('No token found - redirecting to login');
       await performGlobalLogout();
       throw new Error('No authentication token');
     }
@@ -177,7 +178,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}): Pro
     const errorMessage = responseData?.message || responseData?.error || '';
     
     if (checkAuthError(errorMessage)) {
-      console.log('Auth error detected in API response:', errorMessage);
+      // console.log('Auth error detected in API response:', errorMessage);
       await performGlobalLogout();
       throw new Error(errorMessage);
     }

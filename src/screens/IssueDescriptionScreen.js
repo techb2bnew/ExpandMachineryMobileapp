@@ -477,6 +477,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useDispatch } from 'react-redux';
+import { fetchUnreadCounts } from '../store/slices/unreadCountSlice';
 import {
   darkgrayColor,
   whiteColor,
@@ -510,6 +512,7 @@ const {
 } = BaseStyle;
 
 const IssueDescriptionScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
   const { supportType, equipmentData, categoryId, equipmentId } = route.params || {};
 
   const [description, setDescription] = useState('');
@@ -796,6 +799,8 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
 
       // Success - navigate to RequestSubmitted screen
       if (response.ok) {
+        console.log("resss",data);
+        
         // Extract ticket data from response
         // Response structure: { message: 'Ticket created successfully', ticket: {...} }
         const ticket = data?.ticket || data?.data?.ticket || data?.data;
@@ -806,6 +811,9 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
           ticket: ticket,
           fullResponse: data
         });
+
+        // Update unread counts after ticket submission
+        dispatch(fetchUnreadCounts());
 
         navigation.navigate('RequestSubmitted', {
           supportType,

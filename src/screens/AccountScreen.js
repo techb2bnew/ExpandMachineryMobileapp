@@ -12,6 +12,7 @@ import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_ENDPOINTS } from '../constans/Constants'
 const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween } = BaseStyle;
+import { getSocket } from '../socket/socket';
 
 const formatDisplayName = (value) => {
   if (!value || typeof value !== 'string') {
@@ -181,7 +182,25 @@ const AccountScreen = ({ navigation }) => {
       onConfirm: async () => {
         try {
           const token = await AsyncStorage.getItem('userToken');
+          const userData = await AsyncStorage.getItem('userData');
+          const user = userData ? JSON.parse(userData) : null;
 
+          const socket = getSocket();
+
+          // ✅ Step 1: Emit user_offline before logging out
+          if (socket && user) {
+            console.log('📴 Emitting user_offline...');
+            socket.emit('user_offline', {
+              userId: user.id,
+              userEmail: user.email,
+              userName: user.name,
+              role: user.role,
+            });
+            socket.disconnect();
+            console.log('❌ Socket disconnected on logout');
+          }
+
+          // ✅ Step 2: Hit Logout API (optional)
           if (token) {
             try {
               const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/logout`, {
@@ -347,7 +366,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: wp(22),
-    height: Platform.OS === "ios" ? hp(10.5) : hp(11),
+    height: Platform.OS === "ios" ? hp(10) : hp(11),
     borderRadius: 50,
     backgroundColor: lightPinkAccent,
   },

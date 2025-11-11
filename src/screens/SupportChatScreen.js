@@ -1,27 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
-  darkgrayColor,
   whiteColor,
   lightGrayColor,
   grayColor,
   lightBlack,
   lightColor,
   lightPinkAccent,
-  supportGreen,
 } from '../constans/Color';
 import { style, spacings } from '../constans/Fonts';
 import {
@@ -33,9 +32,9 @@ import {
 import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_ENDPOINTS } from '../constans/Constants';
+import { connectSocket, getSocket } from '../socket/socket';
 
 const {
-  flex,
   alignJustifyCenter,
   flexDirectionRow,
   alignItemsCenter,
@@ -49,34 +48,54 @@ const SupportChatScreen = ({ navigation, route }) => {
     supportType,
     equipmentData,
     description,
-    attachedImages,
+    chatId,
   } = route.params || {};
 
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: `Welcome! I see you've submitted ticket ${ticketNumber || 'N/A'}. How can I help you today?`,
-      isUser: false,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isOnline, setIsOnline] = useState(true);
   const flatListRef = useRef(null);
   const [ticketDetails, setTicketDetails] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [userDetails, setUserDetails] = useState(null);
+  const socketRef = useRef(null);
+  const lastReadMessageIdRef = useRef(null);
+  const socketMessageHandlerRef = useRef(null);
+  const attachedSocketRef = useRef(null);
+  const socketConnectHandlerRef = useRef(null);
 
-  // Fetch ticket details on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('userData');
+        if (stored) {
+          setUserDetails(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.log('Failed to load user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  const currentUserId = userDetails?.id || userDetails?._id;
+  const normalizeId = useCallback((value) => {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      return value._id || value.id || null;
+    }
+    return null;
+  }, []);
+
   useEffect(() => {
     if (ticketId) {
-      console.log('Fetching details for ticket ID:', ticketId);
-      
+      console.log("caht", chatId);
+
       fetchTicketDetails();
     }
-  }, [ticketId]);
+  }, [ticketId, chatId]);
 
   const fetchTicketDetails = async () => {
     if (!ticketId || isLoadingDetails) return;
@@ -97,77 +116,414 @@ const SupportChatScreen = ({ navigation, route }) => {
     }
   };
 
+  const formatTimestamp = useCallback((dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      return '';
+    }
+  }, []);
+
+  const mapMessage = useCallback(
+    (message) => {
+      if (!message) return null;
+
+      const payload = message?.data || message?.message || message?.payload || message;
+      const normalizedChatId = normalizeId(payload.chatId || payload.chat) || chatId;
+      const normalizedTicketId = normalizeId(payload.ticketId || payload.ticket) || ticketId;
+      const senderInfo = payload.sender || {};
+
+      const id =
+        payload._id ||
+        payload.id ||
+        `${normalizedChatId}-${payload.createdAt || Date.now()}`;
+
+      const createdAt = payload.createdAt || payload.updatedAt || new Date().toISOString();
+
+      return {
+        id,
+        chatId: normalizedChatId,
+        ticketId: normalizedTicketId,
+        text: payload.content || '',
+        messageType: payload.messageType || 'text',
+        senderId: senderInfo.userId || payload.senderId,
+        senderName: senderInfo.userName || payload.senderName || 'Support',
+        senderType: senderInfo.userType || payload.senderType,
+        createdAt,
+        timestamp: formatTimestamp(createdAt),
+        isUser: currentUserId
+          ? (senderInfo.userId || payload.senderId) === currentUserId
+          : (senderInfo.userType || payload.senderType) === 'customer',
+        status: payload.status || 'sent',
+        attachments: payload.attachments || [],
+        raw: payload,
+      };
+    },
+    [chatId, currentUserId, formatTimestamp, normalizeId, ticketId],
+  );
+
+  const mergeIncomingMessage = useCallback(
+    (incomingMessage) => {
+      if (!incomingMessage) return;
+      const payload = incomingMessage?.data || incomingMessage?.message || incomingMessage?.payload || incomingMessage;
+      const payloadChatId = normalizeId(payload.chatId || payload.chat);
+      const payloadTicketId = normalizeId(payload.ticketId || payload.ticket);
+
+      if (chatId && payloadChatId && payloadChatId !== chatId) {
+        return;
+      }
+      if (ticketId && payloadTicketId && payloadTicketId !== ticketId) {
+        return;
+      }
+      const mapped = mapMessage(payload);
+      if (!mapped) return;
+
+      setMessages((prevMessages) => {
+        const existingIndex = prevMessages.findIndex((msg) => msg.id === mapped.id);
+        if (existingIndex !== -1) {
+          const next = [...prevMessages];
+          next[existingIndex] = mapped;
+          return next;
+        }
+
+        if (mapped.isUser) {
+          for (let i = prevMessages.length - 1; i >= 0; i -= 1) {
+            const candidate = prevMessages[i];
+            if (candidate.isUser && candidate.status === 'pending') {
+              const next = [...prevMessages];
+              next[i] = mapped;
+              return next;
+            }
+          }
+        }
+
+        return [...prevMessages, mapped].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+    },
+    [mapMessage, chatId, ticketId, normalizeId],
+  );
+
+  const fetchChatMessages = useCallback(async () => {
+    if (!chatId) return;
+
+    try {
+      setIsLoadingMessages(true);
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/${chatId}/messages`;
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      const data = await response.json();
+
+      if (response.ok && data?.success && Array.isArray(data?.data)) {
+        const formatted = data.data
+          .map(mapMessage)
+          .filter(Boolean)
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        setMessages(formatted);
+      } else {
+        console.log('Failed to load chat messages', data);
+      }
+    } catch (error) {
+      console.log('Chat messages fetch error:', error);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, [chatId, mapMessage]);
+
+  const ensureSocketConnection = useCallback(async () => {
+    try {
+      let socketInstance = getSocket();
+      if (!socketInstance || !socketInstance.connected) {
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) return null;
+        socketInstance = connectSocket(token);
+      }
+      return socketInstance;
+    } catch (error) {
+      console.log('Failed to ensure socket connection:', error);
+      return null;
+    }
+  }, []);
+
+  const detachSocketListeners = useCallback(
+    (socketInstance) => {
+      if (!socketInstance) return;
+
+      if (socketMessageHandlerRef.current) {
+        socketInstance.off('new_message', socketMessageHandlerRef.current);
+        socketInstance.off('message_broadcast', socketMessageHandlerRef.current);
+      }
+
+      if (socketConnectHandlerRef.current) {
+        socketInstance.off('connect', socketConnectHandlerRef.current);
+      }
+
+      socketMessageHandlerRef.current = null;
+      socketConnectHandlerRef.current = null;
+      if (attachedSocketRef.current === socketInstance) {
+        attachedSocketRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const attachSocketListeners = useCallback(
+    (socketInstance) => {
+      if (!socketInstance) return;
+
+      if (attachedSocketRef.current === socketInstance && socketMessageHandlerRef.current) {
+        return;
+      }
+
+      if (attachedSocketRef.current && attachedSocketRef.current !== socketInstance) {
+        detachSocketListeners(attachedSocketRef.current);
+      }
+
+      const handler = (eventPayload) => {
+        const payloads = Array.isArray(eventPayload) ? eventPayload : [eventPayload];
+        payloads.forEach((payload) => {
+          if (!payload) return;
+          console.log('📨 socket payload received:', payload);
+          mergeIncomingMessage(payload?.data || payload);
+          markAsRead(payload);
+          dispatch(fetchUnreadCounts());
+        });
+      };
+
+      console.log('🔗 attaching socket listeners');
+      socketInstance.on('new_message', handler);
+      socketInstance.on('message_broadcast', handler);
+
+      if (socketConnectHandlerRef.current) {
+        socketInstance.off('connect', socketConnectHandlerRef.current);
+      }
+
+      const handleConnect = () => {
+        console.log('🔄 socket connect event');
+        if (ticketId) {
+          socketInstance.emit('join_ticket', ticketId);
+          console.log('🚪 emitted join_ticket from connect handler', ticketId);
+        }
+      };
+
+      socketInstance.on('connect', handleConnect);
+
+      socketMessageHandlerRef.current = handler;
+      socketConnectHandlerRef.current = handleConnect;
+      attachedSocketRef.current = socketInstance;
+      console.log('✅ socket listeners attached');
+    },
+    [detachSocketListeners, mergeIncomingMessage, ticketId],
+  );
+
   useEffect(() => {
-    // Auto scroll to bottom when new messages arrive
+    let isMounted = true;
+    let socketInstance;
+
+    const registerSocketEvents = async () => {
+      socketInstance = await ensureSocketConnection();
+      if (!socketInstance || !isMounted) return;
+
+      socketRef.current = socketInstance;
+
+      attachSocketListeners(socketInstance);
+
+      if (ticketId) {
+        socketInstance.emit('join_ticket', ticketId);
+        console.log('🚪 Emitted join_ticket', ticketId);
+      }
+    };
+
+    registerSocketEvents();
+
+    return () => {
+      isMounted = false;
+      if (socketInstance) {
+        if (ticketId) {
+          socketInstance.emit('leave_ticket', ticketId);
+        }
+        detachSocketListeners(socketInstance);
+      }
+    };
+  }, [attachSocketListeners, detachSocketListeners, ensureSocketConnection, ticketId, chatId]);
+
+  useEffect(() => {
+    fetchChatMessages();
+  }, [fetchChatMessages]);
+
+  useEffect(() => {
+    if (!userDetails) return;
+
+    setMessages((prev) =>
+      prev
+        .map((message) => {
+          const remapped = mapMessage(message.raw || message);
+          return remapped || message;
+        })
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    );
+  }, [userDetails, mapMessage]);
+
+
+  useEffect(() => {
     if (flatListRef.current) {
       setTimeout(() => {
-        flatListRef.current.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage = {
-        id: Date.now(),
-        text: inputText.trim(),
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      };
 
-      setMessages(prev => [...prev, newMessage]);
-      setInputText('');
+  const handleChangeText = useCallback(
+    (text) => {
+      setInputText(text);
+    },
+    [],
+  );
 
-      // Simulate support response after 2 seconds
-      setTimeout(() => {
-        const supportResponse = {
-          id: Date.now() + 1,
-          text: 'Your ticket is under review. Please wait while our team connects with you.',
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
+  const handleSendMessage = useCallback(async () => {
+    const trimmed = inputText.trim();
+    if (!trimmed || !chatId || !ticketId) return;
+
+    const now = new Date().toISOString();
+    const tempId = `temp-${Date.now()}`;
+
+    const tempMessage = {
+      id: tempId,
+      text: trimmed,
+      messageType: 'text',
+      senderId: currentUserId,
+      senderName: userDetails?.name,
+      senderType: 'customer',
+      createdAt: now,
+      timestamp: formatTimestamp(now),
+      isUser: true,
+      status: 'pending',
+      attachments: [],
+    };
+
+    // show temp
+    setMessages((prev) => [...prev, tempMessage].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
+    setInputText('');
+
+    try {
+      let socket = socketRef.current;
+      if (!socket || !socket.connected) {
+        socket = await ensureSocketConnection();
+        if (socket) {
+          socketRef.current = socket;
+          if (ticketId) {
+            socket.emit('join_ticket', ticketId);
+          }
+        }
+      }
+
+      if (!socket || !socket.connected) {
+        throw new Error('Unable to connect to chat server. Please try again.');
+      }
+
+      if (attachedSocketRef.current !== socket || !socketMessageHandlerRef.current) {
+        attachSocketListeners(socket);
+      }
+
+      socket.emit('send_message', {
+        chatId,
+        ticketId,
+        content: trimmed,
+        messageType: 'text',
+      });
+
+      try {
+        const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/send`;
+        await fetchWithAuth(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId,
+            content: trimmed,
+            messageType: 'text',
           }),
-        };
-        setMessages(prev => [...prev, supportResponse]);
-      }, 2000);
+        });
+      } catch (apiError) {
+        console.log('Send message API error:', apiError);
+      }
+    } catch (error) {
+      console.log('Send message error:', error);
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+    }
+  }, [
+    chatId,
+    ticketId,
+    inputText,
+    currentUserId,
+    userDetails?.name,
+    formatTimestamp,
+    ensureSocketConnection,
+    attachSocketListeners,
+  ]);
+
+
+  const renderMessage = ({ item }) => {
+    return (
+      <View
+        style={[
+          styles.messageContainer,
+          item.isUser ? styles.userMessageContainer : styles.supportMessageContainer,
+        ]}
+      >
+        <View
+          style={[
+            styles.messageBubble,
+            item.isUser ? styles.userMessageBubble : styles.supportMessageBubble,
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              item.isUser ? styles.userMessageText : styles.supportMessageText,
+            ]}
+          >
+            {item.text || 'Unsupported message type'}
+          </Text>
+          <Text style={styles.timestamp}>
+            {item.timestamp}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+
+  const markAsRead = async (chat) => {
+    if (!chat) return;
+    console.log("chat?.ticketId ::", chat?.chatId);
+
+    try {
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/${chat?.chatId}/readAllMessages`;
+      console.log('url (ticket):::::::', url);
+
+      const response = await fetchWithAuth(url, { method: 'PUT' });
+      const data = await response.json();
+      if (response.ok && data?.success) {
+        // Refresh data to get updated read status from API
+        console.log(data?.message);
+      } else {
+        console.log('Failed to mark as read:', data?.message || 'Unknown error');
+      }
+
+    } catch (error) {
+      console.log('Mark as read error:', error);
     }
   };
 
-  const renderMessage = ({ item }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.isUser
-          ? styles.userMessageContainer
-          : styles.supportMessageContainer,
-      ]}
-    >
-      <View
-        style={[
-          styles.messageBubble,
-          item.isUser ? styles.userMessageBubble : styles.supportMessageBubble,
-        ]}
-      >
-        <Text
-          style={[
-            styles.messageText,
-            item.isUser ? styles.userMessageText : styles.supportMessageText,
-          ]}
-        >
-          {item.text}
-        </Text>
-        <Text style={styles.timestamp}>{item.timestamp}</Text>
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View
         style={[
           styles.header,
@@ -191,17 +547,6 @@ const SupportChatScreen = ({ navigation, route }) => {
               Ticket #{ticketDetails?.ticketNumber || ticketNumber || 'N/A'}
             </Text>
           </View>
-          {/* <View
-            style={[styles.onlineStatus, flexDirectionRow, alignItemsCenter]}
-          >
-            <View
-              style={[
-                styles.onlineDot,
-                { backgroundColor: isOnline ? supportGreen : grayColor },
-              ]}
-            />
-            <Text style={styles.onlineText}>Online</Text>
-          </View> */}
         </View>
       </View>
       {isLoadingDetails ? (
@@ -211,7 +556,6 @@ const SupportChatScreen = ({ navigation, route }) => {
       ) : ticketDetails ? (
         <View style={styles.detailsCard}>
           <View style={styles.detailsGrid}>
-            {/* Category */}
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Category</Text>
               <Text style={styles.detailValue}>
@@ -219,7 +563,6 @@ const SupportChatScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* Equipment details - only show if equipmentId exists */}
             {ticketDetails?.equipmentId && (
               <>
                 <View style={styles.detailItem}>
@@ -247,7 +590,9 @@ const SupportChatScreen = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>Description</Text>
             <View style={styles.descriptionBox}>
               <Text style={styles.descriptionText} numberOfLines={3}>
-                {ticketDetails?.description || description || 'No description provided'}
+                {ticketDetails?.description ||
+                  description ||
+                  'No description provided'}
               </Text>
             </View>
           </View>
@@ -286,24 +631,34 @@ const SupportChatScreen = ({ navigation, route }) => {
       )}
 
       <Text style={styles.conversationTitle}>Conversation</Text>
-      <View style={{ borderTopWidth: 1, borderTopColor: grayColor }}></View>
+      <View style={{ borderTopWidth: 1, borderTopColor: grayColor }} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // header height adjust kare
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={(item) => item.id.toString()}
           style={styles.messagesList}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[
+            styles.messagesContent,
+            messages.length === 0 ? styles.messagesEmptyContent : null,
+          ]}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            isLoadingMessages ? (
+              <ActivityIndicator size="small" color={whiteColor} />
+            ) : (
+              <Text style={styles.emptyStateText}>
+                No messages yet. Start the conversation!
+              </Text>
+            )
+          }
         />
 
-        {/* Input Area */}
         <View style={styles.inputContainer}>
           <View style={[styles.inputArea, flexDirectionRow, alignItemsCenter]}>
             <TextInput
@@ -311,7 +666,7 @@ const SupportChatScreen = ({ navigation, route }) => {
               placeholder="Type your message..."
               placeholderTextColor={lightGrayColor}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleChangeText}
               multiline={true}
               maxLength={500}
             />
@@ -369,29 +724,17 @@ const styles = StyleSheet.create({
     color: whiteColor,
     marginTop: 2,
   },
-  onlineStatus: {
-    paddingHorizontal: spacings.small,
-    paddingVertical: spacings.xsmall,
-    backgroundColor: lightBlack,
-    borderRadius: 12,
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacings.xsmall,
-  },
-  onlineText: {
-    ...style.fontSizeSmall1x,
-    ...style.fontWeightMedium,
-    color: whiteColor,
-  },
   messagesList: {
     flex: 1,
   },
   messagesContent: {
     padding: spacings.large,
     paddingBottom: spacings.medium,
+  },
+  messagesEmptyContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   messageContainer: {
     marginBottom: spacings.medium,
@@ -441,7 +784,6 @@ const styles = StyleSheet.create({
     borderTopColor: grayColor,
   },
   inputArea: {
-    // backgroundColor: lightBlack,
     borderRadius: 20,
     paddingHorizontal: spacings.medium,
     paddingVertical: spacings.small,
@@ -553,6 +895,12 @@ const styles = StyleSheet.create({
     ...style.fontWeightThin,
     color: whiteColor,
   },
+  emptyStateText: {
+    ...style.fontSizeNormal,
+    ...style.fontWeightThin,
+    color: lightGrayColor,
+  },
 });
 
 export default SupportChatScreen;
+

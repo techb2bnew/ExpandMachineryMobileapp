@@ -160,7 +160,9 @@ const CreateAccountScreen = ({ navigation }) => {
                     <Image source={APP_LOGO} style={styles.logo} />
 
                     <Text style={styles.title}>{CREATE_ACCOUNT}</Text>
-                    <Text style={styles.subtitle}>{JOIN_EXPAND}</Text>
+                    {/* <Text style={styles.subtitle}> */}
+                        {/* {JOIN_EXPAND} */}
+                    {/* </Text> */}
 
                     <View style={styles.form}>
                         <CustomTextInput
