@@ -6,7 +6,11 @@ import SplashScreen from './src/screens/SplashScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Platform } from 'react-native';
-import { heightPercentageToDP, widthPercentageToDP, setNavigationRef } from './src/utils';
+import {
+  heightPercentageToDP,
+  widthPercentageToDP,
+  setNavigationRef,
+} from './src/utils';
 import CustomToast from './src/components/CustomToast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import NetInfo from '@react-native-community/netinfo';
@@ -15,7 +19,7 @@ import { Toast } from './src/components/CustomToast';
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState<string | null>(null);
-console.log("userTokenuserToken>>>",userToken);
+  console.log('userTokenuserToken>>>', userToken);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -23,7 +27,10 @@ console.log("userTokenuserToken>>>",userToken);
         // Check internet connection first
         const state = await NetInfo.fetch();
         if (!state.isConnected) {
-          Toast.show({ message: 'Internet connection is required to use this app', type: 'error' });
+          Toast.show({
+            message: 'Internet connection is required to use this app',
+            type: 'error',
+          });
         }
 
         const token = await AsyncStorage.getItem('userToken');
@@ -49,7 +56,10 @@ console.log("userTokenuserToken>>>",userToken);
     // Listen for connection changes
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
-        Toast.show({ message: 'Internet connection is required to use this app', type: 'error' });
+        Toast.show({
+          message: 'Internet connection is required to use this app',
+          type: 'error',
+        });
       }
     });
 
@@ -69,7 +79,7 @@ console.log("userTokenuserToken>>>",userToken);
           }}
         >
           <NavigationContainer
-            ref={(ref) => {
+            ref={ref => {
               setNavigationRef(ref);
             }}
           >

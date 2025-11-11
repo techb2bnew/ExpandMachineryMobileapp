@@ -61,7 +61,7 @@ function getRouteHiddenTabs(routeName) {
 export default function BottomTabs() {
   return (
     <Tab.Navigator
-    style={{backgroundColor:"red"}}
+      style={{ backgroundColor: 'red' }}
       screenOptions={({ route }) => {
         // 👇 Nested route ka naam le lo
         const routeName = getFocusedRouteNameFromRoute(route) ?? '';
@@ -73,7 +73,7 @@ export default function BottomTabs() {
           'RequestSubmitted',
           'SupportChat',
           'TicketDetail',
-          'AgentChatScreen'
+          'Auth',
         ];
 
         return {
