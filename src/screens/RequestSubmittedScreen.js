@@ -135,13 +135,13 @@ const RequestSubmittedScreen = ({ navigation, route }) => {
         </View>
 
         {/* Start Chat Button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.chatButton, flexDirectionRow, alignItemsCenter]}
           onPress={handleStartChat}
         >
           <Icon name="chatbubble-outline" size={20} color={whiteColor} />
           <Text style={styles.chatButtonText}>Start Chat for this Ticket</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Ticket Details Card */}
         <View style={styles.detailsCard}>

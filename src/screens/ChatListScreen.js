@@ -193,12 +193,13 @@ const ChatListScreen = ({ navigation }) => {
         try {
             // Use messageId directly from chat object
             if (chat?.messageId) {
-                const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${chat.messageId}/read`;
+                const url = `${API_ENDPOINTS.BASE_URL}/api/app/support-inbox/${chat?.messageId}/read`;
                 console.log('url:::::::', url);
 
                 const response = await fetchWithAuth(url, { method: 'PUT' });
                 const data = await response.json();
                 console.log('data:::::::', data);
+                console.log("massagr id ::");
 
                 if (response.ok && data?.success) {
                     // Refresh data to get updated read status from API
@@ -208,11 +209,12 @@ const ChatListScreen = ({ navigation }) => {
                 }
             } else if (chat?.ticketId) {
                 // Fallback: if no message ID, use ticket read API
-                const url = `${API_ENDPOINTS.BASE_URL}/api/app/tickets/${chat.ticketId}/read`;
+                const url = `${API_ENDPOINTS.BASE_URL}/api/app/tickets/${chat?.ticketId}/read`;
                 console.log('url (ticket):::::::', url);
 
                 const response = await fetchWithAuth(url, { method: 'PUT' });
                 const data = await response.json();
+                console.log("ticket id ::");
 
                 if (response.ok && data?.success) {
                     // Refresh data to get updated read status from API
@@ -284,12 +286,13 @@ const ChatListScreen = ({ navigation }) => {
         markAsRead(chat);
         // Navigate to chat screen with all data
         navigation.navigate('SupportChat', {
-            ticketId: chat.ticketId,
-            ticketNumber: chat.ticketNumber,
+            ticketId: chat?.ticketId,
+            chatId: chat?.id,
+            ticketNumber: chat?.ticketNumber,
             supportType: 'Support',
-            description: chat.description,
-            status: chat.status,
-            title: chat.title,
+            description: chat?.description,
+            status: chat?.status,
+            title: chat?.title,
         });
     };
 
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
     },
     iconContainer: {
         width: wp(12),
-    height: Platform.OS === 'ios' ? hp(5.5) : hp(6),
+        height: Platform.OS === 'ios' ? hp(5.5) : hp(6),
         borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',

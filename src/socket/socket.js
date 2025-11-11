@@ -30,3 +30,15 @@ export const connectSocket = (token) => {
 };
 
 export const getSocket = () => socket;
+
+export const disconnectSocket = () => {
+  if (socket) {
+    try {
+      socket.removeAllListeners();
+    } catch (error) {
+      console.log('⚠️ Error removing socket listeners:', error);
+    }
+    socket.disconnect();
+    socket = null;
+  }
+};

@@ -799,6 +799,8 @@ const IssueDescriptionScreen = ({ navigation, route }) => {
 
       // Success - navigate to RequestSubmitted screen
       if (response.ok) {
+        console.log("resss",data);
+        
         // Extract ticket data from response
         // Response structure: { message: 'Ticket created successfully', ticket: {...} }
         const ticket = data?.ticket || data?.data?.ticket || data?.data;
