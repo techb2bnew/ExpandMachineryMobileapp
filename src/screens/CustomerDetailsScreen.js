@@ -176,15 +176,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import colors from '../constans/Color';
+import colors, { whiteColor } from '../constans/Color';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constans/Constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { spacings } from '../constans/Fonts';
 
 const CustomerDetailsScreen = ({ navigation, route }) => {
-  const customerId = route?.params?.id;
+  const customerId = route?.params?.customerId;
+  const ticketNumber = route?.params?.ticketNumber;
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -257,19 +260,24 @@ const CustomerDetailsScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="chevron-left" size={25} color={colors.accentGold} />
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={whiteColor} />
         </TouchableOpacity>
-        <View>
+        <View style={styles.headerInfo}>
           <Text style={styles.title}>Customer Details</Text>
           <Text style={styles.subtitle}>View detail of customer</Text>
         </View>
       </View>
 
-      <Text style={styles.customerId}>#{customer._id}</Text>
+      {ticketNumber && 
+      <Text style={styles.customerId}>#{ticketNumber}</Text>
+      }
 
-      <View style={styles.card}>
+      <View style={[  styles.card, { marginTop: ticketNumber ? 0 : 20 }]}>
         <View style={styles.row}>
           <Text style={styles.label}>Name</Text>
           <Text style={styles.value}>{customer.name}</Text>
@@ -289,9 +297,9 @@ const CustomerDetailsScreen = ({ navigation, route }) => {
           <Text style={styles.value}>{customer.phone}</Text>
         </View>
 
-        <View style={styles.divider} />
+        {/* <View style={styles.divider} /> */}
 
-        <View style={styles.row}>
+        {/* <View style={styles.row}>
           <Text style={styles.label}>Status</Text>
           <View
             style={[
@@ -307,7 +315,7 @@ const CustomerDetailsScreen = ({ navigation, route }) => {
               {isOnline ? 'Online' : 'Offline'}
             </Text>
           </View>
-        </View>
+        </View> */}
       </View>
     </SafeAreaView>
   );
@@ -320,7 +328,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: 16,
-    paddingTop: 20,
+    // paddingTop: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // paddingVertical: spacings.large,
+    backgroundColor: colors.headerBackground,
+    borderBottomWidth: 0.2,
+    borderBottomColor: '#fff',
+    alignContent: "center"
+  },
+  backButton: {
+    padding: spacings.small,
+    marginRight: spacings.medium,
+  },
+  headerInfo: {
+    flex: 1,
+    paddingTop: spacings.large
   },
   center: {
     flex: 1,
@@ -330,12 +355,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    color: colors.accentGold,
+    color: whiteColor,
     fontWeight: '700',
     marginLeft: 10,
   },
   subtitle: {
-    color: colors.textSecondary,
+    color: whiteColor,
     fontSize: 14,
     marginLeft: 10,
     marginBottom: 20,

@@ -1,81 +1,287 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import Icon from 'react-native-vector-icons/Ionicons'
-import { darkgrayColor, whiteColor, lightGrayColor, lightPinkAccent, grayColor, supportGreen, supportGold, supportBlue, redColor, lightColor, lightBlack } from '../constans/Color'
+import { whiteColor, lightPinkAccent, grayColor, supportGreen, supportGold, supportBlue, redColor, lightColor, lightBlack } from '../constans/Color'
 import { style, spacings } from '../constans/Fonts'
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils';
 import { BaseStyle } from '../constans/Style'
 import { SafeAreaView } from 'react-native-safe-area-context'
-const { flex, alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween, alignItemsFlexStart } = BaseStyle;
+import moment from 'moment'
+import api from '../api/apiClient'
+import { useDispatch } from 'react-redux'
+import { updateNotificationsUnreadCount } from '../store/slices/unreadCountSlice'
+import { useFocusEffect } from '@react-navigation/native'
+const { alignJustifyCenter, flexDirectionRow, alignItemsCenter, justifyContentSpaceBetween, alignItemsFlexStart } = BaseStyle;
+
+const LIMIT = 20
+
+const getNotificationVisuals = (category = '', type = '') => {
+  const normalizedCategory = category?.toLowerCase?.() || ''
+  const normalizedType = type?.toLowerCase?.() || ''
+
+  switch (normalizedCategory) {
+    case 'auth':
+      return { icon: 'log-in-outline', iconColor: supportBlue }
+    case 'customer':
+      return { icon: 'people-outline', iconColor: supportGold }
+    case 'ticket':
+      return { icon: 'document-text-outline', iconColor: supportGreen }
+    default:
+      if (normalizedType === 'warning' || normalizedType === 'error') {
+        return { icon: 'warning-outline', iconColor: redColor }
+      }
+      return { icon: 'notifications-outline', iconColor: supportBlue }
+  }
+}
 
 const NotificationsScreen = () => {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Ticket Update',
-      description: 'Your support ticket #EXP12345 has been resolved by our technical team.',
-      timestamp: '2 hours ago',
-      isUnread: true,
-      icon: 'checkmark',
-      iconColor: supportGreen,
-    },
-    {
-      id: 2,
-      title: 'Maintenance Reminder',
-      description: 'Scheduled maintenance for Machine Model XR-2000 is due this week.',
-      timestamp: '5 hours ago',
-      isUnread: true,
-      icon: 'time',
-      iconColor: supportGold,
-    },
-    {
-      id: 3,
-      title: 'New Expert Available',
-      description: 'A machinery expert is now available for live chat support.',
-      timestamp: '1 day ago',
-      isUnread: false,
-      icon: 'information',
-      iconColor: supportBlue,
-    },
-    {
-      id: 4,
-      title: 'App Update Available',
-      description: 'Version 2.1.0 is now available with improved chat features.',
-      timestamp: '2 days ago',
-      isUnread: true,
-      icon: 'information',
-      iconColor: supportBlue,
-    },
-    {
-      id: 5,
-      title: 'Critical Alert',
-      description: 'Urgent: Safety inspection required for Equipment Serial #ABC123.',
-      timestamp: '3 days ago',
-      isUnread: false,
-      icon: 'warning',
-      iconColor: redColor,
-    },
-  ])
+  const [notifications, setNotifications] = useState([])
+  const [page, setPage] = useState(1)
+  const [isInitialLoading, setIsInitialLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMorePages, setHasMorePages] = useState(true)
+  const [meta, setMeta] = useState({
+    total: 0,
+    totalPages: 0,
+    unreadCount: 0,
+  })
+  const [markingIds, setMarkingIds] = useState(() => new Set())
+  const [deletingIds, setDeletingIds] = useState(() => new Set())
+  const [isMarkingAll, setIsMarkingAll] = useState(false)
+  const loadingFlagsRef = useRef({
+    initial: false,
+    refresh: false,
+    loadMore: false,
+  })
+  const dispatch = useDispatch()
 
-  const unreadCount = notifications.filter(notification => notification.isUnread).length
+  const unreadCount = useMemo(
+    () => meta.unreadCount ?? notifications.filter(notification => notification.isUnread).length,
+    [meta.unreadCount, notifications]
+  )
 
-  const markAllAsRead = () => {
-    setNotifications(prevNotifications =>
-      prevNotifications.map(notification => ({
-        ...notification,
-        isUnread: false
+  React.useEffect(() => {
+    dispatch(updateNotificationsUnreadCount(unreadCount))
+  }, [dispatch, unreadCount])
+
+  const hydrateNotifications = useCallback((incomingNotifications = []) => {
+    return incomingNotifications.map(notification => {
+      const { icon, iconColor } = getNotificationVisuals(notification.category, notification.type)
+
+      return {
+        id: notification._id,
+        title: notification.title,
+        description: notification.message,
+        timestamp: notification?.createdAt ? moment(notification.createdAt).fromNow() : '',
+        isUnread: !notification.isRead,
+        icon,
+        iconColor,
+        raw: notification,
+      }
+    })
+  }, [])
+
+  const fetchNotifications = useCallback(
+    async ({ pageToLoad = 1, mode = 'initial' } = {}) => {
+      const loadingFlags = loadingFlagsRef.current
+
+      if (mode === 'refresh') {
+        if (loadingFlags.refresh) return
+        loadingFlags.refresh = true
+        setIsRefreshing(true)
+      } else if (mode === 'loadMore') {
+        if (loadingFlags.loadMore || loadingFlags.initial) return
+        loadingFlags.loadMore = true
+        setIsLoadingMore(true)
+      } else {
+        if (loadingFlags.initial) return
+        loadingFlags.initial = true
+        setIsInitialLoading(true)
+      }
+
+      try {
+        const response = await api.get('/api/app/notifications', {
+          params: {
+            page: pageToLoad,
+            limit: LIMIT,
+          },
+        })
+
+        const {
+          notifications: apiNotifications = [],
+          total = 0,
+          totalPages = 0,
+          unreadCount: apiUnreadCount,
+        } = response.data || {}
+
+        const hydrated = hydrateNotifications(apiNotifications)
+
+        setNotifications(prev => {
+          if (mode === 'loadMore') {
+            const existingIds = new Set(prev.map(item => item.id))
+            const merged = [...prev]
+
+            hydrated.forEach(item => {
+              if (!existingIds.has(item.id)) {
+                merged.push(item)
+              }
+            })
+
+            return merged
+          }
+
+          return hydrated
+        })
+
+        setMeta({
+          total,
+          totalPages,
+          unreadCount:
+            typeof apiUnreadCount === 'number'
+              ? apiUnreadCount
+              : hydrated.filter(item => item.isUnread).length,
+        })
+
+        setPage(pageToLoad)
+        setHasMorePages(pageToLoad < totalPages)
+      } catch (error) {
+        const message = error?.message || 'Unable to load notifications right now.'
+        Alert.alert('Notifications', message)
+      } finally {
+        if (mode === 'refresh') {
+          loadingFlagsRef.current.refresh = false
+          setIsRefreshing(false)
+        } else if (mode === 'loadMore') {
+          loadingFlagsRef.current.loadMore = false
+          setIsLoadingMore(false)
+        } else {
+          loadingFlagsRef.current.initial = false
+          setIsInitialLoading(false)
+        }
+      }
+    },
+    [hydrateNotifications]
+  )
+
+  useFocusEffect(
+    useCallback(() => {
+      setHasMorePages(true)
+      fetchNotifications({ pageToLoad: 1, mode: 'initial' })
+    }, [fetchNotifications])
+  )
+
+  const handleRefresh = useCallback(() => {
+    if (loadingFlagsRef.current.refresh) return
+    setHasMorePages(true)
+    fetchNotifications({ pageToLoad: 1, mode: 'refresh' })
+  }, [fetchNotifications])
+
+  const handleLoadMore = useCallback(() => {
+    if (!hasMorePages || loadingFlagsRef.current.loadMore || loadingFlagsRef.current.initial) return
+    fetchNotifications({ pageToLoad: page + 1, mode: 'loadMore' })
+  }, [fetchNotifications, hasMorePages, page])
+
+  const markAllAsRead = async () => {
+    if (isMarkingAll) return
+
+    setIsMarkingAll(true)
+
+    try {
+      await api.put('/api/app/notifications/read-all')
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification => ({
+          ...notification,
+          isUnread: false
+        }))
+      )
+      setMeta(prev => ({
+        ...prev,
+        unreadCount: 0,
       }))
-    )
+    } catch (error) {
+      const message = error?.message || 'Unable to mark all notifications as read.'
+      Alert.alert('Notifications', message)
+    } finally {
+      setIsMarkingAll(false)
+    }
   }
 
-  const markAsRead = (id) => {
-    setNotifications(prevNotifications =>
-      prevNotifications.map(notification =>
-        notification.id === id
-          ? { ...notification, isUnread: false }
-          : notification
+  const markAsRead = async (id) => {
+    if (markingIds.has(id)) return
+
+    setMarkingIds(prev => {
+      const updated = new Set(prev)
+      updated.add(id)
+      return updated
+    })
+
+    try {
+      await api.put(`/api/app/notifications/${id}/read`)
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification => {
+          if (notification.id === id) {
+            if (notification.isUnread) {
+              setMeta(prev => ({
+                ...prev,
+                unreadCount: Math.max((prev?.unreadCount || 0) - 1, 0),
+              }))
+            }
+
+            return { ...notification, isUnread: false }
+          }
+
+          return notification
+        })
       )
-    )
+    } catch (error) {
+      const message = error?.message || 'Unable to mark notification as read.'
+      Alert.alert('Notifications', message)
+    } finally {
+      setMarkingIds(prev => {
+        const updated = new Set(prev)
+        updated.delete(id)
+        return updated
+      })
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (deletingIds.has(id)) return
+
+    setDeletingIds(prev => {
+      const updated = new Set(prev)
+      updated.add(id)
+      return updated
+    })
+
+    try {
+      await api.delete(`/api/app/notifications/${id}`)
+
+      setNotifications(prevNotifications => {
+        const notificationToDelete = prevNotifications.find(item => item.id === id)
+
+        if (notificationToDelete?.isUnread) {
+          setMeta(prev => ({
+            ...prev,
+            unreadCount: Math.max((prev?.unreadCount || 0) - 1, 0),
+          }))
+        }
+
+        return prevNotifications.filter(notification => notification.id !== id)
+      })
+    } catch (error) {
+      const message = error?.message || 'Unable to delete notification.'
+      Alert.alert('Notifications', message)
+    } finally {
+      setDeletingIds(prev => {
+        const updated = new Set(prev)
+        updated.delete(id)
+        return updated
+      })
+    }
   }
 
   const deleteNotification = (id) => {
@@ -87,64 +293,77 @@ const NotificationsScreen = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setNotifications(prevNotifications =>
-              prevNotifications.filter(notification => notification.id !== id)
-            )
-          }
+          onPress: () => handleDelete(id)
         }
       ]
     )
   }
 
-  const renderNotificationItem = ({ item }) => (
-    <TouchableOpacity style={styles.notificationCard} activeOpacity={0.8}>
-      <View
-        style={[
-          flexDirectionRow,
-          alignItemsFlexStart,
-          { padding: spacings.large },
-          item.isUnread && { borderLeftWidth: 4, borderLeftColor: lightPinkAccent, borderTopLeftRadius: 10, borderBottomLeftRadius: 10 }, // gold strip for unread
-        ]}
-      >
+  const renderNotificationItem = ({ item }) => {
+    const isMarking = markingIds.has(item.id)
+    const isDeleting = deletingIds.has(item.id)
+
+    return (
+      <TouchableOpacity style={styles.notificationCard} activeOpacity={0.8}>
         <View
           style={[
-            styles.iconContainer,
-            { backgroundColor: item.iconColor + 20 },
-            alignJustifyCenter,
+            flexDirectionRow,
+            alignItemsFlexStart,
+            { padding: spacings.large },
+            item.isUnread && { borderLeftWidth: 4, borderLeftColor: lightPinkAccent, borderTopLeftRadius: 10, borderBottomLeftRadius: 10 }, // gold strip for unread
           ]}
         >
-          <Icon name={item.icon} size={20} color={whiteColor} />
-        </View>
-
-        <View style={styles.notificationTextContainer}>
-          <View style={[styles.titleContainer, flexDirectionRow, alignItemsCenter]}>
-            <Text style={styles.notificationTitle}>{item.title}</Text>
-            {item.isUnread && <View style={styles.unreadDot} />}
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: item.iconColor + 20 },
+              alignJustifyCenter,
+            ]}
+          >
+            <Icon name={item.icon} size={20} color={whiteColor} />
           </View>
-          <Text style={styles.notificationDescription}>{item.description}</Text>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
-        </View>
 
-        <View style={[styles.actionButtons, flexDirectionRow, alignItemsCenter]}>
-          {item.isUnread && (
+          <View style={styles.notificationTextContainer}>
+            <View style={[styles.titleContainer, flexDirectionRow, alignItemsCenter]}>
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+              {item.isUnread && <View style={styles.unreadDot} />}
+            </View>
+            <Text style={styles.notificationDescription}>{item.description}</Text>
+            <Text style={styles.timestamp}>{item.timestamp}</Text>
+          </View>
+
+          <View style={[styles.actionButtons, flexDirectionRow, alignItemsCenter]}>
+            {item.isUnread && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => markAsRead(item.id)}
+                disabled={isMarking}
+                activeOpacity={isMarking ? 1 : 0.7}
+              >
+                {isMarking ? (
+                  <ActivityIndicator size="small" color={whiteColor} />
+                ) : (
+                  <Icon name="checkmark" size={20} color={whiteColor} />
+                )}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => markAsRead(item.id)}
+              onPress={() => deleteNotification(item.id)}
+              disabled={isDeleting}
+              activeOpacity={isDeleting ? 1 : 0.7}
             >
-              <Icon name="checkmark" size={20} color={whiteColor} />
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={lightPinkAccent} />
+              ) : (
+                <Icon name="trash-outline" size={20} color={lightPinkAccent} />
+              )}
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => deleteNotification(item.id)}
-          >
-            <Icon name="trash-outline" size={20} color={lightPinkAccent} />
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    )
+  };
 
 
   return (
@@ -158,26 +377,66 @@ const NotificationsScreen = () => {
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
               </View>
-              <TouchableOpacity style={styles.settingsButton}>
+              {/* <TouchableOpacity style={styles.settingsButton}>
                 <Icon name="settings-outline" size={24} color={whiteColor} />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
           <Text style={styles.unreadText}>{unreadCount} unread notifications</Text>
-          <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-            <Icon name="checkmark" size={20} color={whiteColor} />
-            <Text style={styles.markAllText}>Mark All as Read</Text>
+          <TouchableOpacity
+            style={[styles.markAllButton, isMarkingAll && styles.markAllButtonDisabled]}
+            onPress={markAllAsRead}
+            disabled={isMarkingAll}
+            activeOpacity={isMarkingAll ? 1 : 0.7}
+          >
+            {isMarkingAll ? (
+              <ActivityIndicator size="small" color={whiteColor} />
+            ) : (
+              <Icon name="checkmark" size={20} color={whiteColor} />
+            )}
+            <Text style={[styles.markAllText, isMarkingAll && styles.markAllTextDisabled]}>
+              {isMarkingAll ? 'Marking…' : 'Mark All as Read'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications List */}
-        <FlatList
-          data={notifications}
-          renderItem={renderNotificationItem}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.notificationsList}
-          showsVerticalScrollIndicator={false}
-        />
+        {isInitialLoading ? (
+          <View style={[styles.loaderContainer, alignJustifyCenter]}>
+            <ActivityIndicator size="large" color={lightPinkAccent} />
+          </View>
+        ) : (
+          <FlatList
+            data={notifications}
+            renderItem={renderNotificationItem}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.notificationsList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={whiteColor}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.4}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Icon name="notifications-off-outline" size={48} color={grayColor} />
+                <Text style={styles.emptyStateTitle}>No notifications yet</Text>
+                <Text style={styles.emptyStateSubtitle}>You’re all caught up for now.</Text>
+              </View>
+            }
+            ListFooterComponent={
+              isLoadingMore ? (
+                <View style={styles.listFooter}>
+                  <ActivityIndicator size="small" color={lightPinkAccent} />
+                </View>
+              ) : null
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   )
@@ -230,14 +489,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  markAllButtonDisabled: {
+    opacity: 0.6,
+  },
   markAllText: {
     ...style.fontSizeNormal,
     ...style.fontWeightMedium,
     color: whiteColor,
     marginLeft: spacings.small,
   },
+  markAllTextDisabled: {
+    color: whiteColor,
+  },
   notificationsList: {
     paddingBottom: spacings.xxLarge,
+  },
+  loaderContainer: {
+    flex: 1,
+    minHeight: hp(50),
+  },
+  listFooter: {
+    paddingVertical: spacings.large,
   },
   notificationCard: {
     backgroundColor: lightBlack,
@@ -296,5 +568,22 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: spacings.small,
     marginLeft: spacings.small,
+  },
+  emptyState: {
+    paddingVertical: spacings.xxLarge,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateTitle: {
+    ...style.fontSizeNormal2x,
+    ...style.fontWeightMedium,
+    color: whiteColor,
+    marginTop: spacings.medium,
+  },
+  emptyStateSubtitle: {
+    ...style.fontSizeSmall2x,
+    ...style.fontWeightThin,
+    color: grayColor,
+    marginTop: spacings.small,
   },
 })

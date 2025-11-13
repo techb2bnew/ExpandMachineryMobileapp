@@ -114,7 +114,7 @@ const PrivacyPolicyScreen = ({ navigation }) => {
         <View style={styles.bulletRow}><Text style={styles.bullet}>{'\u2022'}</Text><Text style={styles.bulletText}>Export your data in a portable format</Text></View>
       </Card>
 
-      <HelpCard />
+      {/* <HelpCard /> */}
     </>
   );
 
@@ -160,7 +160,7 @@ const PrivacyPolicyScreen = ({ navigation }) => {
         </Text>
       </Card>
 
-      <HelpCard />
+      {/* <HelpCard /> */}
     </>
   );
 

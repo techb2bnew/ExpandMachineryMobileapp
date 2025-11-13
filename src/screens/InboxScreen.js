@@ -1070,14 +1070,14 @@ const InboxScreen = ({ navigation }) => {
         <TouchableOpacity
           style={styles.messageCard}
           activeOpacity={0.9}
-        // onPress={() => {
-        //   setTicket(item);
-        //   setShowTicketModal(true);
-        //   // Fetch ticket details when modal opens
-        //   if (item.ticketId) {
-        //     fetchTicketDetails(item.ticketId);
-        //   }
-        // }}
+          onPress={() => {
+            setTicket(item);
+            setShowTicketModal(true);
+            // Fetch ticket details when modal opens
+            if (item.ticketId) {
+              fetchTicketDetails(item.ticketId);
+            }
+          }}
         >
           <View style={styles.messageContent}>
             <View
@@ -1170,6 +1170,7 @@ const InboxScreen = ({ navigation }) => {
       onPress={() => {
         LayoutAnimation.configureNext(SmoothEase);
         setActiveTab(item.id);
+        setMessages([])
       }}
     >
       <Text
@@ -1393,12 +1394,12 @@ const InboxScreen = ({ navigation }) => {
                 )}
 
                 {/* Created Date */}
-                <View style={styles.detailItem}>
+                {/* <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Created Date</Text>
                   <Text style={styles.detailValue}>
                     {formatDate(ticketDetails?.createdAt) || 'N/A'}
                   </Text>
-                </View>
+                </View> */}
 
                 {/* Description */}
                 <View style={styles.descriptionSection}>

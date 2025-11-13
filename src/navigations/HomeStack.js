@@ -9,6 +9,7 @@ import CustomerFormScreen from '../screens/CustomerFormScreen';
 import CustomerDetailsScreen from '../screens/CustomerDetailsScreen';
 import AgentChatScreen from '../screens/AgentChatScreen';
 import AuthStack from './AuthStack';
+import AgentHome from '../components/AgentHome';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +23,7 @@ export default function HomeStack() {
       <Stack.Screen name="SupportChat" component={SupportChatScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="CustomerForm" component={CustomerFormScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="CustomerDetails" component={CustomerDetailsScreen} options={{ gestureEnabled: false }}/>
+      <Stack.Screen name="AgentChatScreen" component={AgentChatScreen} options={{ gestureEnabled: false }}/>
       <Stack.Screen name="Auth" component={AuthStack} options={{ gestureEnabled: false }}/>
 
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeStack from './HomeStack';
 import InboxStack from './InboxStack';
@@ -7,7 +7,7 @@ import NotificationsStack from './NotificationsStack';
 import AccountStack from './AccountStack';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import {
   darkgrayColor,
   whiteColor,
@@ -18,8 +18,9 @@ import {
 import { spacings } from '../constans/Fonts';
 import { getFocusedRouteNameFromRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchUnreadCounts } from '../store/slices/unreadCountSlice';
+import { fetchUnreadCounts, fetchNotificationsUnreadCount } from '../store/slices/unreadCountSlice';
 import { useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Tab = createBottomTabNavigator();
 
@@ -64,27 +65,89 @@ function getRouteHiddenTabs(routeName) {
 export default function BottomTabs() {
   const dispatch = useDispatch();
   const navigation = useNavigation();
+  const [userRole, setUserRole] = useState(null);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   // Get unread counts from Redux store
   const inboxUnread = useSelector((state) => state.unreadCount.inboxUnread);
   const chatUnread = useSelector((state) => state.unreadCount.chatUnread);
+  const notificationsUnread = useSelector((state) => state.unreadCount.notificationsUnread);
+
+  const isCustomer = userRole === 'customer';
+  const isAgent = userRole === 'agent';
 
   // Fetch counts whenever BottomTabs screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Fetch unread counts when tab bar comes into focus
-      dispatch(fetchUnreadCounts());
-    }, [dispatch])
+      if (isRoleLoading) {
+        return;
+      }
+
+      if (isCustomer) {
+        dispatch(fetchUnreadCounts());
+      }
+
+      if (isAgent) {
+        dispatch(fetchNotificationsUnreadCount());
+      }
+    }, [dispatch, isAgent, isCustomer, isRoleLoading])
   );
 
   // Listen to navigation state changes - fetch counts on any navigation
   useEffect(() => {
+    if (isRoleLoading) {
+      return;
+    }
+
     const unsubscribe = navigation.addListener('state', () => {
-      // Fetch counts on any navigation state change
-      dispatch(fetchUnreadCounts());
+      if (isCustomer) {
+        dispatch(fetchUnreadCounts());
+      }
+      if (isAgent) {
+        dispatch(fetchNotificationsUnreadCount());
+      }
     });
 
     return unsubscribe;
-  }, [navigation, dispatch]);
+  }, [navigation, dispatch, isAgent, isCustomer, isRoleLoading]);
+
+  useEffect(() => {
+    const loadRole = async () => {
+      try {
+        const storedRole = await AsyncStorage.getItem('userRole');
+        let normalizedRole = null;
+        if (storedRole) {
+          try {
+            normalizedRole = JSON.parse(storedRole);
+          } catch {
+            normalizedRole = storedRole;
+          }
+        }
+        setUserRole(
+          typeof normalizedRole === 'string'
+            ? normalizedRole.toLowerCase()
+            : null,
+        );
+      } catch (error) {
+        console.log('Error loading user role:', error);
+        setUserRole(null);
+      } finally {
+        setIsRoleLoading(false);
+      }
+    };
+
+    loadRole();
+  }, []);
+
+  const showAgentTabs = isAgent;
+  const showCustomerTabs = isCustomer;
+
+  if (isRoleLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={lightPinkAccent} />
+      </View>
+    );
+  }
 
   return (
     <Tab.Navigator
@@ -136,7 +199,7 @@ export default function BottomTabs() {
             }
             if (route.name === 'NotificationsTab') {
               (iconName = 'notifications-outline'), (iconType = Icon);
-              badge = 2;
+              badge = notificationsUnread > 0 ? notificationsUnread : null;
             }
             if (route.name === 'AccountTab')
               (iconName = 'user'), (iconType = Feather);
@@ -172,39 +235,46 @@ export default function BottomTabs() {
           },
         })}
       />
-      <Tab.Screen
-        name="InboxTab"
-        component={InboxStack}
-        listeners={({ navigation }) => ({
-          tabPress: e => {
-            // Fetch counts when inbox tab is pressed
-            dispatch(fetchUnreadCounts());
-            navigation.navigate('InboxTab', { screen: 'InboxMain' });
-          },
-        })}
-      />
-      <Tab.Screen
-        name="ChatTab"
-        component={ChatStack}
-        listeners={({ navigation }) => ({
-          tabPress: e => {
-            // Fetch counts when chat tab is pressed
-            dispatch(fetchUnreadCounts());
-            navigation.navigate('ChatTab', { screen: 'ChatList' });
-          },
-        })}
-      />
-      {/* <Tab.Screen
-        name="NotificationsTab"
-        component={NotificationsStack}
-        listeners={({ navigation }) => ({
-          tabPress: e => {
-            navigation.navigate('NotificationsTab', {
-              screen: 'NotificationsScreen',
-            });
-          },
-        })}
-      /> */}
+      {showCustomerTabs && (
+        <Tab.Screen
+          name="InboxTab"
+          component={InboxStack}
+          listeners={({ navigation }) => ({
+            tabPress: e => {
+              // Fetch counts when inbox tab is pressed
+              dispatch(fetchUnreadCounts());
+              navigation.navigate('InboxTab', { screen: 'InboxMain' });
+            },
+          })}
+        />
+      )}
+      {showCustomerTabs && (
+        <Tab.Screen
+          name="ChatTab"
+          component={ChatStack}
+          listeners={({ navigation }) => ({
+            tabPress: e => {
+              // Fetch counts when chat tab is pressed
+              dispatch(fetchUnreadCounts());
+              navigation.navigate('ChatTab', { screen: 'ChatList' });
+            },
+          })}
+        />
+      )}
+      {showAgentTabs && (
+        <Tab.Screen
+          name="NotificationsTab"
+          component={NotificationsStack}
+          listeners={({ navigation }) => ({
+            tabPress: e => {
+              dispatch(fetchNotificationsUnreadCount());
+              navigation.navigate('NotificationsTab', {
+                screen: 'NotificationsMain',
+              });
+            },
+          })}
+        />
+      )}
       <Tab.Screen
         name="AccountTab"
         component={AccountStack}
@@ -269,5 +339,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: lightPinkAccent,
     marginTop: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: lightColor,
   },
 });

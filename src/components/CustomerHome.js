@@ -100,8 +100,8 @@ const CustomerHome = ({ navigation }) => {
     // First 3 cards (Applications, Service, Parts) go to Select Equipment screen
     if (category.order <= 3) {
       navigation.navigate('SelectEquipment', {
-        supportType: category.title,
-        categoryId: category.id
+        supportType: category?.title,
+        categoryId: category?.id
       });
     } else {
       // 4th card (Sales Support) goes to Issue Description directly

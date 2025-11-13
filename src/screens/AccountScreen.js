@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, FlatList, Platform, ActivityIndicator } from 'react-native'
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -37,6 +37,33 @@ const AccountScreen = ({ navigation }) => {
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [profileData, setProfileData] = useState(null)
+  const [userRole, setUserRole] = useState(null)
+
+  useEffect(() => {
+    const loadRole = async () => {
+      try {
+        const storedRole = await AsyncStorage.getItem('userRole');
+        let normalizedRole = null;
+        if (storedRole) {
+          try {
+            normalizedRole = JSON.parse(storedRole);
+          } catch {
+            normalizedRole = storedRole;
+          }
+        }
+        setUserRole(
+          typeof normalizedRole === 'string'
+            ? normalizedRole.toLowerCase()
+            : null,
+        );
+      } catch (error) {
+        console.log('Error loading user role on Account screen:', error);
+        setUserRole(null);
+      }
+    };
+
+    loadRole();
+  }, []);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -104,7 +131,7 @@ const AccountScreen = ({ navigation }) => {
       iconType: Ionicons,
       onPress: () => handleDeleteAccount(),
     },
-    {
+    userRole === 'customer' && {
       id: 3,
       title: 'Report and Issue',
       subtitle: 'Submit a report or issue',
@@ -301,7 +328,7 @@ const AccountScreen = ({ navigation }) => {
         {/* Account Options */}
         <View style={styles.optionsContainer}>
           <FlatList
-            data={accountOptions}
+            data={accountOptions.filter(Boolean)}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderAccountOption}
             showsVerticalScrollIndicator={false}

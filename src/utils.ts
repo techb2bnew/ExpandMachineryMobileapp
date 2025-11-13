@@ -98,6 +98,18 @@ const performGlobalLogout = async (): Promise<void> => {
   }
 };
 
+type FetchWithAuthOptions = RequestInit & {
+  /**
+   * Prevents automatic logout when an auth-related error is detected.
+   * Useful for flows that can safely recover (e.g. retry after login finishes).
+   */
+  suppressLogoutOnAuthError?: boolean;
+  /**
+   * Skip the requirement of having a token (for public endpoints).
+   */
+  skipTokenRequirement?: boolean;
+};
+
 /**
  * Global Fetch Wrapper - Automatically handles auth errors
  * Use this instead of regular fetch() for all API calls
@@ -116,23 +128,29 @@ const performGlobalLogout = async (): Promise<void> => {
  * const response = await fetchWithAuth(`${API_ENDPOINTS.BASE_URL}/api/app/profile`);
  * // Token automatically added, auth errors automatically handled!
  */
-export const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+export const fetchWithAuth = async (url: string, options: FetchWithAuthOptions = {}): Promise<Response> => {
+  const {
+    suppressLogoutOnAuthError = false,
+    skipTokenRequirement = false,
+    ...requestOptions
+  } = options;
+
   try {
     // Get token from AsyncStorage
     const token = await AsyncStorage.getItem('userToken');
-console.log("token",token);
 
     // If no token and this is not a public endpoint, check if we should logout
-    if (!token && !url.includes('/auth/login') && !url.includes('/auth/register')) {
-      // console.log('No token found - redirecting to login');
-      await performGlobalLogout();
+    if (!token && !skipTokenRequirement && !url.includes('/auth/login') && !url.includes('/auth/register')) {
+      if (!suppressLogoutOnAuthError) {
+        await performGlobalLogout();
+      }
       throw new Error('No authentication token');
     }
 
     // Add Authorization header if token exists
     const headers: any = {
       Accept: 'application/json',
-      ...options.headers,
+      ...requestOptions.headers,
     };
 
     if (token) {
@@ -140,15 +158,15 @@ console.log("token",token);
     }
 
     // For FormData, don't set Content-Type (browser sets it automatically with boundary)
-    if (options.body instanceof FormData) {
+    if (requestOptions.body instanceof FormData) {
       delete headers['Content-Type'];
-    } else if (options.body && !headers['Content-Type']) {
+    } else if (requestOptions.body && !headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }
 
     // Merge headers with existing options
     const fetchOptions: RequestInit = {
-      ...options,
+      ...requestOptions,
       headers,
     };
 
@@ -176,22 +194,20 @@ console.log("token",token);
 
     // Check for auth errors in response (both error and success responses)
     const errorMessage = responseData?.message || responseData?.error || '';
+    const authStatus = response.status === 401 || response.status === 403;
+    const isAuthError = authStatus || checkAuthError(errorMessage);
     
-    if (checkAuthError(errorMessage)) {
-      // console.log('Auth error detected in API response:', errorMessage);
-      await performGlobalLogout();
-      throw new Error(errorMessage);
+    if (isAuthError) {
+      if (!suppressLogoutOnAuthError) {
+        await performGlobalLogout();
+      }
+      throw new Error(errorMessage || 'Unauthorized');
     }
 
     // Return original response (body not consumed)
     return response;
   } catch (error: any) {
-    // If error is auth-related, logout has already been handled
-    if (error?.message && checkAuthError(error.message)) {
-      throw error;
-    }
-    
-    // Re-throw other errors
+    // Re-throw errors so callers can handle them appropriately
     throw error;
   }
 };

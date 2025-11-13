@@ -319,7 +319,7 @@ const PersonalInformationScreen = ({ navigation }) => {
               <Feather name="user" size={40} color={whiteColor} />
             </View>
             <Text style={styles.userName}>{formatDisplayName(userData.fullName)}</Text>
-            <Text style={styles.membershipText}>{membershipText}</Text>
+            {/* <Text style={styles.membershipText}>{membershipText}</Text> */}
 
             {!isEditing && (
               <TouchableOpacity

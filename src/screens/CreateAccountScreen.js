@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Image,
+    TouchableOpacity,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
+    Modal,
+} from 'react-native';
 import { Toast } from '../components/CustomToast';
 import CustomTextInput from '../components/CustomTextInput';
 import CustomButton from '../components/CustomButton';
@@ -9,6 +19,7 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from '../utils'
 import { style, spacings } from '../constans/Fonts';
 import { APP_LOGO } from '../assests/images';
 import { ALREADY_HAVE_ACCOUNT, CREATE_ACCOUNT, JOIN_EXPAND, FULL_NAME, ENTER_YOUR_FULL_NAME, EMAIL_ADDRESS, ENTER_YOUR_EMAIL, PHONE_NUMBER, ENTER_YOUR_PASSWORD, PASSWORD, CONFIRM_PASSWORD, CONFIRM_YOUR_PASSWORD, SIGN_IN, ENTER_YOUR_PHONE_NUMBER, API_ENDPOINTS } from '../constans/Constants';
+import OTPTextInput from 'react-native-otp-textinput';
 
 const isPhoneNumberPatternValid = (value) => /^\+?[0-9\s()\-]*$/.test(value.trim());
 
@@ -22,6 +33,13 @@ const CreateAccountScreen = ({ navigation }) => {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [otp, setOtp] = useState('');
+    const [otpError, setOtpError] = useState('');
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpKey, setOtpKey] = useState(0);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [isResendingOtp, setIsResendingOtp] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -95,6 +113,25 @@ const CreateAccountScreen = ({ navigation }) => {
         return valid;
     };
 
+    useEffect(() => {
+        let interval = null;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => {
+                    if (prev <= 1) {
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => {
+            if (interval) {
+                clearInterval(interval);
+            }
+        };
+    }, [resendTimer]);
+
     const handleCreateAccount = async () => {
         if (!validateForm() || !isFormComplete) {
             return;
@@ -128,8 +165,11 @@ const CreateAccountScreen = ({ navigation }) => {
 
 
             if (response.ok) {
-                // Navigate to login after a short delay
-                navigation.navigate('Login');
+                
+                setOtp('');
+                setOtpError('');
+                setOtpKey((prev) => prev + 1);
+                setShowOtpModal(true);
             } else {
                 // Handle API errors
                 const errorMsg = data.message || data.error || 'Something went wrong. Please try again.';
@@ -142,6 +182,112 @@ const CreateAccountScreen = ({ navigation }) => {
             setServerError('Please check your connection and try again.');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const validateOtp = () => {
+        if (!otp.trim() || otp.trim().length !== 6) {
+            setOtpError('Enter the 6-digit OTP sent to your email');
+            return false;
+        }
+        setOtpError('');
+        return true;
+    };
+
+    const handleSubmitOtp = async () => {
+        if (!validateOtp()) {
+            return;
+        }
+
+        const emailToVerify = email.trim().toLowerCase();
+        if (!emailToVerify) {
+            setOtpError('Email is missing. Please re-enter your details.');
+            return;
+        }
+
+        setIsVerifyingOtp(true);
+        setOtpError('');
+
+        try {
+            const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/verify-email`, {
+                method: 'POST',
+                headers: {
+                    'Accept': '*/*',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: emailToVerify,
+                    otp: otp.trim(),
+                }),
+            });
+
+            const data = await response.json().catch(() => null);
+
+            if (response.ok && data?.success) {
+              
+                handleCloseOtpModal(true);
+                navigation.navigate('Login');
+            } else {
+                const message = data?.message || 'Invalid OTP. Please try again.';
+                setOtpError(message);
+            }
+        } catch (error) {
+            console.error('Verify email error:', error);
+            setOtpError('Unable to verify OTP. Please check your connection and try again.');
+        } finally {
+            setIsVerifyingOtp(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        const emailToVerify = email.trim().toLowerCase();
+        if (!emailToVerify) {
+            setOtpError('Email is missing. Please re-enter your details.');
+            return;
+        }
+        if (resendTimer > 0) {
+            return;
+        }
+
+        setIsResendingOtp(true);
+        setOtpError('');
+
+        try {
+            const response = await fetch(`${API_ENDPOINTS.BASE_URL}/api/app/auth/resend-email-otp`, {
+                method: 'POST',
+                headers: {
+                    'Accept': '*/*',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: emailToVerify,
+                }),
+            });
+
+            const data = await response.json().catch(() => null);
+
+            if (response.ok && data?.success) {
+                setOtp('');
+                setOtpKey((prev) => prev + 1);
+                setResendTimer(30);
+            } else {
+                const message = data?.message || 'Failed to resend OTP. Please try again.';
+                setOtpError(message);
+            }
+        } catch (error) {
+            console.error('Resend OTP error:', error);
+            setOtpError('Unable to resend OTP. Please check your connection and try again.');
+        } finally {
+            setIsResendingOtp(false);
+        }
+    };
+
+    const handleCloseOtpModal = (verified = false) => {
+        setShowOtpModal(false);
+        if (!verified) {
+            setOtp('');
+            setOtpError('');
+            setOtpKey((prev) => prev + 1);
         }
     };
 
@@ -259,6 +405,72 @@ const CreateAccountScreen = ({ navigation }) => {
                     </View>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={showOtpModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => handleCloseOtpModal()}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Verify Your Email</Text>
+                        <Text style={styles.modalSubtitle}>
+                            A 6-digit OTP has been sent to {email || 'your email address'}.
+                            Enter it below to complete your registration.
+                        </Text>
+
+                        <View style={styles.otpWrapper}>
+                            <OTPTextInput
+                                key={otpKey}
+                                inputCount={6}
+                                tintColor={otpError ? redColor : whiteColor}
+                                offTintColor={grayColor}
+                                containerStyle={styles.otpInputContainer}
+                                textInputStyle={[styles.otpInput, otpError && styles.otpInputError]}
+                                keyboardType="number-pad"
+                                handleTextChange={(value) => {
+                                    setOtp(value);
+                                    setOtpError('');
+                                }}
+                                defaultValue={otp}
+                            />
+                            {otpError ? <Text style={styles.otpErrorText}>{otpError}</Text> : null}
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.resendButtonWrapper}
+                            onPress={handleResendOtp}
+                            disabled={isResendingOtp || isVerifyingOtp || resendTimer > 0}
+                        >
+                            <Text
+                                style={[
+                                    styles.resendButtonText,
+                                    (isResendingOtp || isVerifyingOtp || resendTimer > 0) && styles.resendButtonDisabled,
+                                ]}
+                            >
+                                {isResendingOtp
+                                    ? 'Sending OTP...'
+                                    : resendTimer > 0
+                                        ? `Resend OTP in ${resendTimer}s`
+                                        : 'Resend OTP'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <Text style={styles.modalNote}>
+                            Didn’t receive the code? Please wait a few moments and check your spam folder.
+                        </Text>
+
+                        <CustomButton
+                            title={isVerifyingOtp ? 'Verifying...' : 'Submit OTP'}
+                            onPress={handleSubmitOtp}
+                            loading={isVerifyingOtp}
+                            disabled={isVerifyingOtp || isResendingOtp}
+                        />
+
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 };
@@ -316,6 +528,81 @@ const styles = StyleSheet.create({
     serverErrorText: {
         color: redColor,
         marginBottom: spacings.large,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacings.large,
+    },
+    modalContainer: {
+        width: '100%',
+        maxWidth: wp(90),
+        backgroundColor: lightBlack,
+        borderRadius: 12,
+        padding: spacings.xxLarge,
+    },
+    modalTitle: {
+        fontSize: style.fontSizeLarge.fontSize,
+        fontWeight: style.fontWeightThin1x.fontWeight,
+        color: whiteColor,
+        marginBottom: spacings.medium,
+    },
+    modalSubtitle: {
+        ...style.fontSizeNormal,
+        ...style.fontWeightThin,
+        color: whiteColor,
+        marginBottom: spacings.xLarge,
+        lineHeight: 20,
+    },
+    otpWrapper: {
+        alignItems: 'center',
+        marginBottom: spacings.xLarge,
+    },
+    otpInputContainer: {
+        marginHorizontal: 0,
+    },
+    otpInput: {
+        backgroundColor: lightColor,
+        borderColor: grayColor,
+        borderWidth: 1,
+        borderRadius: 8,
+        color: whiteColor,
+        fontSize: 20,
+        fontWeight: '600',
+        height: hp(6.5),
+        width: wp(12),
+    },
+    otpInputError: {
+        borderColor: redColor,
+    },
+    otpErrorText: {
+        color: redColor,
+        marginTop: spacings.medium,
+        ...style.fontSizeSmall1x,
+    },
+    modalNote: {
+        ...style.fontSizeSmall1x,
+        ...style.fontWeightThin,
+        color: grayColor,
+        textAlign: 'center',
+        marginBottom: spacings.xxLarge,
+        lineHeight: 18,
+    },
+    resendButtonWrapper: {
+        marginBottom: spacings.large,
+        alignItems: 'center',
+    },
+    resendButtonText: {
+        ...style.fontSizeSmall1x,
+        ...style.fontWeightMedium,
+        color: whiteColor,
+        textDecorationLine: 'underline',
+    },
+    resendButtonDisabled: {
+        color: grayColor,
+        textDecorationLine: 'none',
     },
 });
 

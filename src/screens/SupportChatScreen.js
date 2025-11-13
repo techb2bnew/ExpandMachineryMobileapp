@@ -33,6 +33,7 @@ import { BaseStyle } from '../constans/Style';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_ENDPOINTS } from '../constans/Constants';
 import { connectSocket, getSocket } from '../socket/socket';
+import { fetchUnreadCounts } from '../store/slices/unreadCountSlice';
 
 const {
   alignJustifyCenter,
@@ -482,6 +483,9 @@ const SupportChatScreen = ({ navigation, route }) => {
             item.isUser ? styles.userMessageBubble : styles.supportMessageBubble,
           ]}
         >
+          <Text style={styles.senderName}>
+            {item.isUser ? 'You' : item.senderName || 'Support'}
+          </Text>
           <Text
             style={[
               styles.messageText,
@@ -501,10 +505,11 @@ const SupportChatScreen = ({ navigation, route }) => {
 
   const markAsRead = async (chat) => {
     if (!chat) return;
-    console.log("chat?.ticketId ::", chat?.chatId);
+    const chatIdToMark = chat?.chatId || chatId;
+    console.log("chat?.ticketId ::", chatIdToMark);
 
     try {
-      const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/${chat?.chatId}/readAllMessages`;
+      const url = `${API_ENDPOINTS.BASE_URL}/api/app/chat/${chatIdToMark}/readAllMessages`;
       console.log('url (ticket):::::::', url);
 
       const response = await fetchWithAuth(url, { method: 'PUT' });
@@ -512,6 +517,7 @@ const SupportChatScreen = ({ navigation, route }) => {
       if (response.ok && data?.success) {
         // Refresh data to get updated read status from API
         console.log(data?.message);
+        fetchUnreadCounts();
       } else {
         console.log('Failed to mark as read:', data?.message || 'Unknown error');
       }
@@ -535,7 +541,7 @@ const SupportChatScreen = ({ navigation, route }) => {
         <View style={[flexDirectionRow, alignItemsCenter]}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => { navigation.goBack(); markAsRead(chatId); }}
           >
             <Icon name="arrow-back" size={24} color={whiteColor} />
           </TouchableOpacity>
@@ -776,6 +782,12 @@ const styles = StyleSheet.create({
     color: lightGrayColor,
     marginTop: spacings.xsmall,
     alignSelf: 'flex-end',
+  },
+  senderName: {
+    ...style.fontSizeSmall,
+    // ...style.fontWeightMedium,
+    color: lightGrayColor,
+    marginBottom: spacings.xsmall,
   },
   inputContainer: {
     paddingHorizontal: spacings.large,

@@ -3,16 +3,33 @@ import React, { useEffect, useState } from 'react';
 import AgentHome from '../components/AgentHome';
 import CustomerHome from '../components/CustomerHome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DeviceInfo from 'react-native-device-info';
 
 const HomeScreen = ({ navigation }) => {
   const [userRole, setUserRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const getDeviceId = async () => {
+      const deviceId = await DeviceInfo.getUniqueId();
+      console.log('📱 Device Unique ID:', deviceId);
+    };
 
+    getDeviceId();
+  }, []);
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const role = await AsyncStorage.getItem('userRole');
-        setUserRole(role);
+        const storedRole = await AsyncStorage.getItem('userRole');
+        let normalizedRole = null;
+        if (storedRole) {
+          try {
+            normalizedRole = JSON.parse(storedRole);
+          } catch {
+            normalizedRole = storedRole;
+          }
+        }
+        console.log('userRole::', normalizedRole);
+        setUserRole(normalizedRole);
       } catch (e) {
         console.log('error reading userRole', e);
       } finally {
@@ -34,9 +51,9 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1 }}>
       {userRole === 'agent' ? (
-        <CustomerHome navigation={navigation} />
-      ) : (
         <AgentHome navigation={navigation} />
+      ) : (
+        <CustomerHome navigation={navigation} />
       )}
     </View>
   );

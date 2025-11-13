@@ -340,7 +340,7 @@ const AgentHome = ({ navigation }) => {
           style={styles.menuItem}
           onPress={() => {
             setOpenActionFor(null);
-            navigation.navigate('CustomerDetails', { id: raw._id });
+            navigation.navigate('CustomerDetails', { customerId: raw._id });
           }}
         >
           <Text style={styles.menuText}>View</Text>
